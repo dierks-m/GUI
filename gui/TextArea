@@ -1,0 +1,199 @@
+-- Variables --
+local rawArgs = {...}
+
+local object = rawArgs[2]
+local args = rawArgs[1]
+object.GUIObjectType = 0x02
+
+bAssert(type(args.text) == "nil" or type(args.text) == "table", "Text must be given in table form", 1)
+bAssert(type(args.variables) == "nil" or type(args.variables) == "table", "Variables must be given in table form", 1)
+
+if args.text then
+    for k, v in pairs(args.text) do
+        bAssert(type(v) == "string", "Malformed text", 1)
+    end
+end
+
+self.text = args.text or {}
+self.variables = args.variables or {}
+self.formattedText = {}
+
+if type(args.margin) == "number" then
+    self.margin_left, self.margin_right, self.margin_top, self.margin_bottom = args.margin, args.margin, args.margin, args.margin
+end
+
+self.margin_left = type(args.margin_left) == "number" and args.margin_left or self.margin_left or 0
+self.margin_right = type(args.margin_right) == "number" and args.margin_right or self.margin_right or 0
+self.margin_top = type(args.margin_top) == "number" and args.margin_top or self.margin_top or 0
+self.margin_bottom = type(args.margin_bottom) == "number" and args.margin_bottom or self.margin_bottom or 0
+-- Variables --
+
+
+-- Functions --
+local function tryWrite( text, pattern, obj, default )
+    local match = text:match( pattern )
+
+    if match then
+        if match:match( "[&$]%x;" ) then
+            obj[ match:sub( 1, 1 ) == "&" and "setTextColor" or "setBackgroundColor" ](reverseLookup[match:sub(2, 2)])
+        elseif match:match( "[&$][Oo];" ) then
+            local isFg = match:sub( 1, 1 ) == "&"
+
+            if default and default[ isFg and "fg" or "bg" ] then
+                obj[ isFg and "setTextColor" or "setBackgroundColor" ](reverseLookup[default[ isFg and "fg" or "bg" ]])
+            end
+        else
+            obj.write( match )
+        end
+
+        return text:sub( #match+1 )
+    end
+end
+
+local function advPrint( text, y1, x1, x2, obj, default )
+    obj = obj or term
+    y1 = y1 or 1
+    x1 = x1 or 1
+    x2 = x2 or obj.getSize()
+    local x3 = x1
+
+    local ort = text:match( "^[&$]([rlm]);" )
+
+    if ort then
+        if ort == "m" then
+            x3 = math.floor( ( ( x2-x1+1 )-#text:gsub( "[&$][%xrlmo];", "" )+1 )/2+0.5 )+x1-1
+        elseif ort == "l" then
+            x3 = x1
+        elseif ort == "r" then
+            x3 = x2-#text:gsub( "[&$][%xrlmo];", "" )+1
+        end
+
+        text = text:sub( 4 )
+    end
+
+    obj.setCursorPos( x3, y1 )
+
+    while #text > 0 do
+        text = tryWrite( text, "^[&$][%xrlmOo];", obj, default ) or
+            tryWrite( text, "^%w+", obj, default ) or
+            tryWrite( text, "^.", obj, default )
+    end
+end
+
+local function insertVariables ( text, variables )
+	return text:gsub( "$$(.+);", function ( varName )
+		return variables[ varName ] or "(var:" .. varName .. ")"
+	end )
+end
+
+local function format( text, xSize )
+    local xPos, formatted = 1, { "" }
+
+    for k in text:gmatch( "%s*%S+" ) do
+        local withoutFormatting = k:gsub( "[$&][%xrlm];", "" )
+
+        if #withoutFormatting > xSize-xPos then
+            if #withoutFormatting > xSize then
+                local rest = xSize-#formatted[ #formatted ]:gsub( "[$&][%xrlm];", "" )
+                local currPos, actPos = 0, 0
+
+                while currPos < #k do
+                    if not k:sub( currPos ):match( "^[$&][%xrlm];" ) then
+                        if actPos == rest-1 then
+                            break
+                        end
+                        currPos = currPos + 1
+                        actPos = actPos + 1
+                    else
+                        currPos = currPos + 3
+                    end
+                end
+
+                formatted[ #formatted ] = formatted[ #formatted ] .. k:sub( 1, currPos ) .. "-"
+                formatted[ #formatted+1 ] = k:sub( currPos+1 )
+                xPos = #k:sub( currPos+1 )
+            else
+                k = k:match( "%S+" )
+                formatted[ #formatted+1 ] = k
+                xPos = #k
+            end
+        else
+            formatted[ #formatted ] = formatted[ #formatted ] .. k
+            xPos = xPos + #k:gsub( "[$&][%xrlm];", "" )
+        end
+    end
+
+    return formatted
+end
+
+local function processText()
+	local result, pointer
+    self.formattedText = {}
+
+	for k, v in pairs(self.text) do
+		result = format(insertVariables(v, self.variables), self.boundaries.x2-self.boundaries.x1-self.margin_left-self.margin_right+1)
+
+		for k1, v1 in pairs(result) do
+			self.formattedText[#self.formattedText+1] = v1
+		end
+	end
+end
+
+local function draw( forceCalculation )
+	if #self.boundaries == 0 or self.forcedCalculation then
+		self.boundaries = object.getBounds()
+	end
+
+	if #self.formattedText == 0 or self.forcedCalculation then
+		processText()
+	end
+
+	local lineLength = self.boundaries.x2-self.boundaries.x1+1
+
+	term.setTextColor(reverseLookup[self.fg_color])
+	term.setBackgroundColor(reverseLookup[self.bg_color])
+
+	for y = self.boundaries.y1, self.boundaries.y2 do
+		local textPos = y-self.boundaries.y1-self.margin_top+1
+		term.setCursorPos(self.boundaries.x1, y)
+		term.blit((" "):rep(lineLength), self.fg_color:rep(lineLength), self.bg_color:rep(lineLength))
+		term.setCursorPos(self.boundaries.x1, y)
+
+		if self.formattedText[textPos] and textPos < self.boundaries.y2-self.boundaries.y1-self.margin_bottom+1 then
+			advPrint(
+                self.formattedText[textPos],
+                y,
+                self.boundaries.x1+self.margin_left,
+                self.boundaries.x2-self.margin_right,
+                term,
+                {fg=self.fg_color, bg=self.bg_color}
+            )
+		end
+	end
+
+	for k, v in pairs(self.children) do
+		v.draw()
+	end
+end
+
+local function setTextColor( color )
+    if type(color) == "number" then
+		for k, v in pairs(reverseLookup) do
+			if color == v then
+				self.fg_color = k
+				break
+			end
+		end
+	else
+		self.fg_color = lookup[color] or ( reverseLookup[color] and color ) or self.bg_color
+	end
+end
+-- Functions --
+
+-- Returning of element --
+setTextColor(args.fg_color or "0")
+object.draw = draw
+object.setTextColor = setTextColor
+
+return object
+-- Returning of element --

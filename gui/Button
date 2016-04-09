@@ -1,0 +1,29 @@
+-- Variables --
+local rawArgs = {...}
+
+local args = rawArgs[1]
+local object = rawArgs[2]
+object.GUIObjectType = 0x03
+-- Variables --
+
+
+-- Functions --
+local function isClicked( x, y )
+	if #self.boundaries == 0 or self.forcedCalculation then
+		self.boundaries = object.getBounds()
+	end
+
+	if x >= self.boundaries.x1 and x <= self.boundaries.x2
+		and y >= self.boundaries.y1 and y <= self.boundaries.y2 then
+
+		return true
+	end
+end
+-- Functions --
+
+
+-- Returning of element
+object.isClicked = isClicked
+
+return object
+-- Returning of element --
