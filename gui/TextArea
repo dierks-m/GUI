@@ -87,19 +87,23 @@ local function insertVariables ( text, variables )
 end
 
 local function format( text, xSize )
-    local xPos, formatted = 1, { "" }
+    if xSize < 2 then
+        return {""}
+    end
 
-    for k in text:gmatch( "%s*%S+" ) do
-        local withoutFormatting = k:gsub( "[$&][%xrlm];", "" )
+    local xPos, formatted = 1, {""}
 
-        if #withoutFormatting > xSize-xPos then
-            if #withoutFormatting > xSize then
+    for match in text:gmatch("%s*%S+") do
+        local withoutFormatting = match:gsub("[$&][%xrlmo];", "")
+
+        if #withoutFormatting > xSize-xPos+1 then
+            while #withoutFormatting > xSize do
                 local rest = xSize-#formatted[ #formatted ]:gsub( "[$&][%xrlm];", "" )
                 local currPos, actPos = 0, 0
 
-                while currPos < #k do
-                    if not k:sub( currPos ):match( "^[$&][%xrlm];" ) then
-                        if actPos == rest-1 then
+                while currPos < #match do
+                    if not match:sub( currPos ):match( "^[$&][%xrlm];" ) then
+                        if actPos >= rest-1 then
                             break
                         end
                         currPos = currPos + 1
@@ -109,17 +113,20 @@ local function format( text, xSize )
                     end
                 end
 
-                formatted[ #formatted ] = formatted[ #formatted ] .. k:sub( 1, currPos ) .. "-"
-                formatted[ #formatted+1 ] = k:sub( currPos+1 )
-                xPos = #k:sub( currPos+1 )
-            else
-                k = k:match( "%S+" )
-                formatted[ #formatted+1 ] = k
-                xPos = #k
+                formatted[#formatted] = formatted[#formatted] .. match:sub(1, currPos) .. "-"
+                match = match:sub(currPos+1)
+                withoutFormatting = match:gsub("[$&][%xrlmo];", "")
+                if #withoutFormatting > xSize then
+                    formatted[#formatted+1] = ""
+                end
             end
+
+            match = match:match( "%S+" )
+            formatted[ #formatted+1 ] = match
+            xPos = #match
         else
-            formatted[ #formatted ] = formatted[ #formatted ] .. k
-            xPos = xPos + #k:gsub( "[$&][%xrlm];", "" )
+            formatted[ #formatted ] = formatted[ #formatted ] .. match
+            xPos = xPos + #match:gsub( "[$&][%xrlmo];", "" )
         end
     end
 
@@ -159,7 +166,7 @@ local function draw( forceCalculation )
 		term.blit((" "):rep(lineLength), self.fg_color:rep(lineLength), self.bg_color:rep(lineLength))
 		term.setCursorPos(self.boundaries.x1, y)
 
-		if self.formattedText[textPos] and textPos < self.boundaries.y2-self.boundaries.y1-self.margin_bottom+1 then
+		if self.formattedText[textPos] and textPos <= self.boundaries.y2-self.boundaries.y1-self.margin_bottom+1 then
 			advPrint(
                 self.formattedText[textPos],
                 y,
@@ -198,6 +205,10 @@ local function setText( text )
         if type(v) == "string" then
             self.text[#self.text+1] = v
         end
+    end
+
+    if #self.boundaries == 0 or self.forcedCalculation then
+        self.boundaries = object.getBounds()
     end
 
     processText()
