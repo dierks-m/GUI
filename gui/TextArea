@@ -257,6 +257,7 @@ object.draw = draw
 object.setTextColor = setTextColor
 object.setText = setText
 object.getText = getText
+object.setVariable = setVariable
 
 return object
 -- Returning of element --
