@@ -86,47 +86,133 @@ local function insertVariables ( text, variables )
 	end )
 end
 
-local function format( text, xSize )
+local function formatText( text, xSize )
     if xSize < 2 then
         return {""}
     end
 
-    local xPos, formatted = 1, {""}
+    local formatted = {}
+    local newFormatted, xPos = {}
+    local formattingOptions = {} -- 1, 2, 3 (left, middle, right)
+    local currentFormatting, firstMatch = 1
 
-    for match in text:gmatch("%s*%S+") do
-        local withoutFormatting = match:gsub("[$&][%xrlmo];", "")
+    for k, v in pairs(text) do
+        v = insertVariables(v, self.variables)
+        formatted[#formatted+1] = ""
+        formattingOptions[#formattingOptions+1] = currentFormatting
+        firstMatch = v:match("^%s*[&$][RrMmLl];")
 
-        if #withoutFormatting > xSize-xPos+1 then
-            while #withoutFormatting > xSize do
-                local rest = xSize-#formatted[ #formatted ]:gsub( "[$&][%xrlm];", "" )
-                local currPos, actPos = 0, 0
+        for match in v:gmatch("[&$]*[^&$]+") do
+            local formattingSign = match:match("^%s*[&$]([RrMmLl]);")
 
-                while currPos < #match do
-                    if not match:sub( currPos ):match( "^[$&][%xrlm];" ) then
-                        if actPos >= rest-1 then
-                            break
+            if formattingSign then
+                if not firstMatch then
+                    formatted[#formatted+1] = ""
+                    formattingOptions[#formattingOptions+1] = 1
+                end
+
+                formatted[#formatted] = formatted[#formatted] .. match:match("^[&$][RrMmLl];(.*)")
+                currentFormatting = formattingSign:lower() == "l" and 1 or formattingSign:lower() == "m" and 2 or 3
+                formattingOptions[#formattingOptions] = currentFormatting
+            else
+                formatted[#formatted] = formatted[#formatted] .. match
+            end
+
+            firstMatch = false
+        end
+    end
+
+    for i = 1, #formatted do
+        newFormatted[#newFormatted+1] = ""
+        xPos = 1
+        currentFormatting = formattingOptions[i]
+
+        for match in formatted[i]:gmatch("%s*%S+") do
+            local withoutColor = match:gsub("[&$][%xo];", "")
+
+            if #withoutColor > xSize-xPos+1 then
+                while #withoutColor > xSize do
+                    local rest = xSize-#newFormatted[ #newFormatted ]:gsub("[$&][%xRrLlMmo];", "")
+                    local currPos, actPos = 0, 0
+
+                    while currPos < #match do
+                        if not match:sub( currPos ):match( "^[$&][%xo];" ) then
+                            if actPos >= rest-1 then
+                                break
+                            end
+                            currPos = currPos + 1
+                            actPos = actPos + 1
+                        else
+                            currPos = currPos + 3
                         end
-                        currPos = currPos + 1
-                        actPos = actPos + 1
-                    else
-                        currPos = currPos + 3
+                    end
+
+                    newFormatted[#newFormatted] = newFormatted[#newFormatted] .. match:sub(1, currPos) .. "-"
+                    match = match:sub(currPos+1)
+                    withoutColor = match:gsub("[$&][%xo];", "")
+
+                    if #withoutColor > xSize then
+                        newFormatted[#newFormatted+1] = ""
+                        table.insert(formattingOptions, i, currentFormatting)
                     end
                 end
 
-                formatted[#formatted] = formatted[#formatted] .. match:sub(1, currPos) .. "-"
-                match = match:sub(currPos+1)
-                withoutFormatting = match:gsub("[$&][%xrlmo];", "")
-                if #withoutFormatting > xSize then
-                    formatted[#formatted+1] = ""
-                end
+                match = match:match( "%S+" )
+                newFormatted[ #newFormatted+1 ] = match
+                table.insert(formattingOptions, i, currentFormatting)
+                xPos = #match
+            else
+                newFormatted[ #newFormatted ] = newFormatted[ #newFormatted ] .. match
+                xPos = xPos + #match:gsub( "[$&][%xo];", "" )
+            end
+        end
+    end
+
+    for k, v in pairs(newFormatted) do
+        if formattingOptions[k] == 2 then
+            newFormatted[k] = (" "):rep(math.floor((xSize-#v)/2)) .. v
+        elseif formattingOptions[k] == 3 then
+            newFormatted[k] = (" "):rep(xSize-#v) .. v
+        end
+    end
+
+    return newFormatted
+end
+
+local function formatColors( text, original_fg, original_bg )
+    local current_fg, current_bg = original_fg, original_bg
+    local match, color_match
+    local formatted = {}
+
+    for k, v in pairs(text) do
+        formatted[#formatted+1] = {"", "", ""}
+
+        while #v > 0 do
+            match = v:match("(.+)[$&][%xOo];")
+
+            if not match then
+                color_match = v:match("^[$&][%xOo];")
             end
 
-            match = match:match( "%S+" )
-            formatted[ #formatted+1 ] = match
-            xPos = #match
-        else
-            formatted[ #formatted ] = formatted[ #formatted ] .. match
-            xPos = xPos + #match:gsub( "[$&][%xrlmo];", "" )
+            if color_match then
+                if color_match:sub(1, 1) == "&" then
+                    current_fg = color_match:sub(2, 2)
+                    current_fg = current_fg:lower() == "o" and original_fg or current_fg
+                else
+                    current_bg = color_match:sub(2, 2)
+                    current_bg = current_bg:lower() == "o" and original_bg or current_bg
+                end
+
+                v = v:sub(4)
+            else
+                match = match or v
+
+                formatted[#formatted][1] = formatted[#formatted][1] .. match
+                formatted[#formatted][2] = formatted[#formatted][2] .. current_fg:rep(#match)
+                formatted[#formatted][3] = formatted[#formatted][3] .. current_bg:rep(#match)
+
+                v = v:sub(#match+1)
+            end
         end
     end
 
@@ -134,16 +220,7 @@ local function format( text, xSize )
 end
 
 local function processText()
-	local result, pointer
-    self.formattedText = {}
-
-	for k, v in pairs(self.text) do
-		result = format(insertVariables(v, self.variables), self.boundaries.x2-self.boundaries.x1-self.margin_left-self.margin_right+1)
-
-		for k1, v1 in pairs(result) do
-			self.formattedText[#self.formattedText+1] = v1
-		end
-	end
+    self.formattedText = formatColors(formatText(self.text, self.boundaries.x2-self.boundaries.x1-self.margin_left-self.margin_right+1), self.fg_color, self.bg_color)
 end
 
 local function draw( forceCalculation )
@@ -154,6 +231,7 @@ local function draw( forceCalculation )
 	if #self.formattedText == 0 or self.forcedCalculation then
 		processText()
 	end
+
 
 	local lineLength = self.boundaries.x2-self.boundaries.x1+1
 
@@ -167,14 +245,7 @@ local function draw( forceCalculation )
 		term.setCursorPos(self.boundaries.x1, y)
 
 		if self.formattedText[textPos] and textPos <= self.boundaries.y2-self.boundaries.y1-self.margin_bottom+1 then
-			advPrint(
-                self.formattedText[textPos],
-                y,
-                self.boundaries.x1+self.margin_left,
-                self.boundaries.x2-self.margin_right,
-                term,
-                {fg=self.fg_color, bg=self.bg_color}
-            )
+			term.blit(self.formattedText[textPos][1], self.formattedText[textPos][2], self.formattedText[textPos][3])
 		end
 	end
 
