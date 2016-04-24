@@ -30,56 +30,6 @@ self.margin_bottom = type(args.margin_bottom) == "number" and args.margin_bottom
 
 
 -- Functions --
-local function tryWrite( text, pattern, obj, default )
-    local match = text:match( pattern )
-
-    if match then
-        if match:match( "[&$]%x;" ) then
-            obj[ match:sub( 1, 1 ) == "&" and "setTextColor" or "setBackgroundColor" ](reverseLookup[match:sub(2, 2)])
-        elseif match:match( "[&$][Oo];" ) then
-            local isFg = match:sub( 1, 1 ) == "&"
-
-            if default and default[ isFg and "fg" or "bg" ] then
-                obj[ isFg and "setTextColor" or "setBackgroundColor" ](reverseLookup[default[ isFg and "fg" or "bg" ]])
-            end
-        else
-            obj.write( match )
-        end
-
-        return text:sub( #match+1 )
-    end
-end
-
-local function advPrint( text, y1, x1, x2, obj, default )
-    obj = obj or term
-    y1 = y1 or 1
-    x1 = x1 or 1
-    x2 = x2 or obj.getSize()
-    local x3 = x1
-
-    local ort = text:match( "^[&$]([rlm]);" )
-
-    if ort then
-        if ort == "m" then
-            x3 = math.floor( ( ( x2-x1+1 )-#text:gsub( "[&$][%xrlmo];", "" )+1 )/2+0.5 )+x1-1
-        elseif ort == "l" then
-            x3 = x1
-        elseif ort == "r" then
-            x3 = x2-#text:gsub( "[&$][%xrlmo];", "" )+1
-        end
-
-        text = text:sub( 4 )
-    end
-
-    obj.setCursorPos( x3, y1 )
-
-    while #text > 0 do
-        text = tryWrite( text, "^[&$][%xrlmOo];", obj, default ) or
-            tryWrite( text, "^%w+", obj, default ) or
-            tryWrite( text, "^.", obj, default )
-    end
-end
-
 local function insertVariables ( text, variables )
 	return text:gsub( "$$(.-);", function ( varName )
 		return variables[ varName ] or "(var:" .. varName .. ")"
@@ -285,6 +235,11 @@ local function setText( text )
     processText()
 end
 
+local function setVariable( name, value )
+    self.variables[name] = value
+    self.forcedCalculation = true
+end
+
 local function getText()
     local text = {}
 
@@ -302,7 +257,6 @@ object.draw = draw
 object.setTextColor = setTextColor
 object.setText = setText
 object.getText = getText
-object.variables = self.variables
 
 return object
 -- Returning of element --
