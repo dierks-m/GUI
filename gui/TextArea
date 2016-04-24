@@ -81,7 +81,7 @@ local function advPrint( text, y1, x1, x2, obj, default )
 end
 
 local function insertVariables ( text, variables )
-	return text:gsub( "$$(.+);", function ( varName )
+	return text:gsub( "$$(.-);", function ( varName )
 		return variables[ varName ] or "(var:" .. varName .. ")"
 	end )
 end
@@ -302,6 +302,7 @@ object.draw = draw
 object.setTextColor = setTextColor
 object.setText = setText
 object.getText = getText
+object.variables = self.variables
 
 return object
 -- Returning of element --
