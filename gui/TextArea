@@ -204,19 +204,6 @@ local function draw( forceCalculation )
 	end
 end
 
-local function setTextColor( color )
-    if type(color) == "number" then
-		for k, v in pairs(reverseLookup) do
-			if color == v then
-				self.fg_color = k
-				break
-			end
-		end
-	else
-		self.fg_color = lookup[color] or ( reverseLookup[color] and color ) or self.bg_color
-	end
-end
-
 local function setText( text )
     bAssert(type(text) == "table", "Text must be given in table form", 1)
 
@@ -254,7 +241,6 @@ end
 -- Returning of element --
 setTextColor(args.fg_color or "0")
 object.draw = draw
-object.setTextColor = setTextColor
 object.setText = setText
 object.getText = getText
 object.setVariable = setVariable
