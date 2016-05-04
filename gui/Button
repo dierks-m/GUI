@@ -3,7 +3,7 @@ local rawArgs = {...}
 
 local args = rawArgs[1]
 local object = rawArgs[2]
-object.GUIObjectType = 0x03
+object.GUIObjectType = 0x04
 -- Variables --
 
 
