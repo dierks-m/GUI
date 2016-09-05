@@ -108,6 +108,10 @@ function checkCanvasForClick( element, x, y )
 
 	return matches
 end
+
+function lookupColor( color )
+	return lookup[ color ]
+end
 -- Functions --
 
 
