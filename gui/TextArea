@@ -239,7 +239,6 @@ end
 -- Functions --
 
 -- Returning of element --
-setTextColor(args.fg_color or "0")
 object.draw = draw
 object.setText = setText
 object.getText = getText
