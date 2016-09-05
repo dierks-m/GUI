@@ -138,10 +138,10 @@ local function formatColors( text, original_fg, original_bg )
         formatted[#formatted+1] = {"", "", ""}
 
         while #v > 0 do
-            match = v:match("(.+)[$&][%xOo];")
+            color_match = v:match("^[$&][%xOo];")
 
-            if not match then
-                color_match = v:match("^[$&][%xOo];")
+            if not color_match then
+                match = v:match("(.+)[$&][%xOo];")
             end
 
             if color_match then
