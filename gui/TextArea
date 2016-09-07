@@ -192,7 +192,7 @@ local function draw( forceCalculation )
 		local textPos = y-self.boundaries.y1-self.margin_top+1
 		term.setCursorPos(self.boundaries.x1, y)
 		term.blit((" "):rep(lineLength), self.fg_color:rep(lineLength), self.bg_color:rep(lineLength))
-		term.setCursorPos(self.boundaries.x1, y)
+		term.setCursorPos(self.boundaries.x1+self.margin_left, y)
 
 		if self.formattedText[textPos] and textPos <= self.boundaries.y2-self.boundaries.y1-self.margin_bottom+1 then
 			term.blit(self.formattedText[textPos][1], self.formattedText[textPos][2], self.formattedText[textPos][3])
