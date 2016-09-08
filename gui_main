@@ -2,7 +2,7 @@
 local GUIElements = {
 	CanvasObject	=	{"/gui/CanvasObject", 0x01};
 	TextArea		=	{"/gui/TextArea", 0x02};
-	Button			=	{"/gui/Button", 0x03};
+	Button			=	{"/gui/Button", 0x04};
 }
 
 local dependencies = {
