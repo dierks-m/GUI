@@ -184,6 +184,12 @@ local function getCursorPosition()
         y = self.cursorPosition[2]+self.cursorPosition[4];
     }
 end
+
+local function showCursor()
+    term.setCursorBlink( true )
+    term.setTextColor( reverseLookup[self.fg_color] )
+    term.setCursorPos( self.boundaries.x1 + self.cursorPosition[1]-1, self.boundaries.y1+self.cursorPosition[2]-1 )
+end
 -- Functions --
 
 
@@ -192,5 +198,6 @@ object.draw = drawCurrentLine
 object.processEvent = processEvent
 object.getText = getText
 object.getCursorPosition = getCursorPosition
+object.showCursor = showCursor
 return object
 -- Returning of element --
