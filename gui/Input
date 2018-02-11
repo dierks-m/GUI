@@ -139,19 +139,19 @@ local function drawAll()
     local textToDraw
 
     for y = self.boundaries.y1, self.boundaries.y2 do
-        term.setCursorPos(self.boundaries.x1, y)
+        screen.setCursorPos(self.boundaries.x1, y)
         if self.text[y-self.boundaries.y1+1+self.cursorPosition[4]] then
             textToDraw = self.text[y-self.boundaries.y1+1+self.cursorPosition[4]]:sub(self.cursorPosition[3]+1, lineLength+self.cursorPosition[3])
             textToDraw = textToDraw .. (" "):rep(lineLength-#textToDraw > 0 and lineLength-#textToDraw or 0)
         else
             textToDraw = (" "):rep(lineLength)
         end
-        term.blit(textToDraw,
+        screen.blit(textToDraw,
             self.fg_color:rep(lineLength),
             self.bg_color:rep(lineLength))
     end
 
-    term.setCursorPos(self.boundaries.x1+self.cursorPosition[1]-1, self.boundaries.y1+self.cursorPosition[2]-1)
+    screen.setCursorPos(self.boundaries.x1+self.cursorPosition[1]-1, self.boundaries.y1+self.cursorPosition[2]-1)
 end
 
 local function drawCurrentLine()
@@ -162,8 +162,8 @@ local function drawCurrentLine()
 
     local lineLength = self.boundaries.x2-self.boundaries.x1+1
 
-    term.setCursorPos(self.boundaries.x1, self.boundaries.y1+self.cursorPosition[2]-1)
-    term.blit(self.text[self.cursorPosition[2]]:sub(self.cursorPosition[3], lineLength+self.cursorPosition[3]-1),
+    screen.setCursorPos(self.boundaries.x1, self.boundaries.y1+self.cursorPosition[2]-1)
+    screen.blit(self.text[self.cursorPosition[2]]:sub(self.cursorPosition[3], lineLength+self.cursorPosition[3]-1),
         self.fg_color:rep(lineLength),
         self.bg_color:rep(lineLength))
 end
@@ -186,9 +186,9 @@ local function getCursorPosition()
 end
 
 local function showCursor()
-    term.setCursorBlink( true )
-    term.setTextColor( reverseLookup[self.fg_color] )
-    term.setCursorPos( self.boundaries.x1 + self.cursorPosition[1]-1, self.boundaries.y1+self.cursorPosition[2]-1 )
+    screen.setCursorBlink( true )
+    screen.setTextColor( reverseLookup[self.fg_color] )
+    screen.setCursorPos( self.boundaries.x1 + self.cursorPosition[1]-1, self.boundaries.y1+self.cursorPosition[2]-1 )
 end
 -- Functions --
 
