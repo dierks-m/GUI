@@ -1,9 +1,11 @@
 -- Variables --
+local component = require("component")
+
 local GUIElements = {
-	CanvasObject	=	{"/gui/CanvasObject", 0x01};
-	TextArea		=	{"/gui/TextArea", 0x02};
-	Button			=	{"/gui/Button", 0x04};
-	Input			=	{"/gui/Input", 0x08}
+	CanvasObject	=	{".gui/CanvasObject", 0x01};
+	TextArea		=	{".gui/TextArea", 0x02};
+	Button			=	{".gui/Button", 0x04};
+	Input			=	{".gui/Input", 0x08}
 }
 
 local dependencies = {
@@ -52,10 +54,70 @@ local reverseLookup = {
 	[ "1" ] =	2;
 	[ "0" ] =	1;
 }
+
+local standardPalette = {
+    0x000000;
+    0xFF0000;
+    0x008000;
+    0xA52A2A;
+    0x0000FF;
+    0x800080;
+    0x00FFFF;
+    0xD3D3D3;
+    0x808080;
+    0xFFC0CB;
+    0x00FF00;
+    0xFFFF00;
+    0xADD8E6;
+    0xFF00FF;
+    0xFFA500;
+    0xFFFFFF;
+}
+
+_G.screen = {
+    xPos    =   0;
+    yPos    =   0;
+}
+local gpu = component.gpu
+local term = require( "term" )
 -- Variables --
 
 
 -- Functions --
+_G.screen.setCursorPos = function( x, y )
+    assert( type(x) == "number" and type(y) == "number", "Arguments must be numbers" )
+    _G.screen.xPos = x
+    _G.screen.yPos = y
+end
+
+_G.screen.blit = function( text, fg, bg )
+    while #text > 0 do
+        local fg_match, bg_match = fg:match( fg:sub( 1, 1 ) .. "+" ), bg:match( bg:sub( 1, 1 ) .. "+" )
+        local fg_color, bg_color = fg_match and fg_match:sub( 1, 1 ), bg_match and bg_match:sub( 1, 1 )
+        local len = math.min( fg_match and #fg_match or #text, bg_match and #bg_match or #text )
+
+        if fg_color then
+            gpu.setForeground( tonumber( fg_color, 16 ), true )
+        end
+
+        if bg_color then
+            gpu.setBackground( tonumber( bg_color, 16 ), true )
+        end
+
+        gpu.set( _G.screen.xPos, _G.screen.yPos, text:sub( 1, len ) )
+        _G.screen.xPos = _G.screen.xPos + len
+        text, fg, bg = text:sub( len+1 ), fg:sub( len+1 ), bg:sub( len+1 )
+    end
+end
+
+_G.screen.getSize = function()
+    return gpu.getResolution()
+end
+
+_G.screen.setCursorBlink = function( bool )
+    term.setCursorBlink( bool )
+end
+
 local function bAssert ( state, msg, errLevel )
 	--[[
 		Basically a better assert in that way that it faults the caller, not the called function
@@ -66,7 +128,7 @@ local function bAssert ( state, msg, errLevel )
 end
 
 local function loadElement( name, env )
-	return loadfile(GUIElements[name][1], env)
+	return loadfile(GUIElements[name][1], "bt", env)
 end
 
 function createGUIObject( args, objectType, parent, redirect )
@@ -77,7 +139,7 @@ function createGUIObject( args, objectType, parent, redirect )
 		reverseLookup	=	reverseLookup;
 		bAssert			=	bAssert;
 		self			=	self;
-		term			=	redirect or term;
+		screen			=	redirect or screen;
 	}
 
 	setmetatable(environment, {__index=_G})
@@ -116,26 +178,11 @@ function lookupColor( color )
 end
 -- Functions --
 
-
--- Older versions --
-if not term.blit then
-	term.blit = function( text, fg, bg )
-		while #text > 0 do
-			local fg_match, bg_match = fg:match( fg:sub( 1, 1 ) .. "+" ), bg:match( bg:sub( 1, 1 ) .. "+" )
-			local fg_color, bg_color = fg_match and fg_match:sub( 1, 1 ), bg_match and bg_match:sub( 1, 1 )
-			local len = math.min( fg_match and #fg_match or #text, bg_match and #bg_match or #text )
-
-			if fg_color and reverseLookup[ fg_color ] then
-				term.setTextColor( reverseLookup[ fg_color ] )
-			end
-
-			if bg_color and reverseLookup[ bg_color ] then
-				term.setBackgroundColor( reverseLookup[ bg_color ] )
-			end
-
-			term.write( text:sub( 1, len ) )
-			text, fg, bg = text:sub( len+1 ), fg:sub( len+1 ), bg:sub( len+1 )
-		end
-	end
+for i = 1, #standardPalette do
+    gpu.setPaletteColor( i-1, standardPalette[i] )
 end
--- Older versions --
+
+return {
+    createGUIObject = createGUIObject;
+    checkCanvasForClick = checkCanvasForClick;
+}
