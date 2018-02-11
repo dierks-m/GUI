@@ -185,17 +185,14 @@ local function draw( forceCalculation )
 
 	local lineLength = self.boundaries.x2-self.boundaries.x1+1
 
-	term.setTextColor(reverseLookup[self.fg_color])
-	term.setBackgroundColor(reverseLookup[self.bg_color])
-
 	for y = self.boundaries.y1, self.boundaries.y2 do
 		local textPos = y-self.boundaries.y1-self.margin_top+1
-		term.setCursorPos(self.boundaries.x1, y)
-		term.blit((" "):rep(lineLength), self.fg_color:rep(lineLength), self.bg_color:rep(lineLength))
-		term.setCursorPos(self.boundaries.x1+self.margin_left, y)
+		screen.setCursorPos(self.boundaries.x1, y)
+		screen.blit((" "):rep(lineLength), self.fg_color:rep(lineLength), self.bg_color:rep(lineLength))
+		screen.setCursorPos(self.boundaries.x1+self.margin_left, y)
 
 		if self.formattedText[textPos] and textPos <= self.boundaries.y2-self.boundaries.y1-self.margin_bottom+1 then
-			term.blit(self.formattedText[textPos][1], self.formattedText[textPos][2], self.formattedText[textPos][3])
+			screen.blit(self.formattedText[textPos][1], self.formattedText[textPos][2], self.formattedText[textPos][3])
 		end
 	end
 
