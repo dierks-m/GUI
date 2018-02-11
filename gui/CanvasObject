@@ -54,7 +54,7 @@ local function getBounds()
 	if parent then
 		sizing = parent.getBounds()
 	else
-		xSize, ySize = term.getSize()
+		xSize, ySize = screen.getSize()
 		sizing = {
 			x1	=	1;
 			x2	=	xSize;
@@ -102,8 +102,8 @@ local function draw()
 	local lineLength = self.boundaries.x2-self.boundaries.x1+1
 
 	for y = self.boundaries.y1, self.boundaries.y2 do
-		term.setCursorPos(self.boundaries.x1, y)
-		term.blit((" "):rep(lineLength), ("f"):rep(lineLength), self.bg_color:rep(lineLength))
+		screen.setCursorPos(self.boundaries.x1, y)
+		screen.blit((" "):rep(lineLength), ("f"):rep(lineLength), self.bg_color:rep(lineLength))
 	end
 
 	for k, v in pairs(self.children) do
