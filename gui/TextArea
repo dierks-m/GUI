@@ -141,7 +141,7 @@ local function formatColors( text, original_fg, original_bg )
             color_match = v:match("^[$&][%xOo];")
 
             if not color_match then
-                match = v:match("(.+)[$&][%xOo];")
+                match = v:match("(.-)[$&][%xOo];")
             end
 
             if color_match then
