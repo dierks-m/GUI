@@ -120,7 +120,7 @@ local function formatText( text, xSize )
 
     for k, v in pairs(newFormatted) do
         if formattingOptions[k] == 2 then
-            newFormatted[k] = (" "):rep(math.floor((xSize-#(v:gsub( "[&$][%xOo]", "" )))/2)) .. v
+            newFormatted[k] = (" "):rep(math.floor((xSize-#(v:gsub( "[&$][%xOo];", "" )))/2)) .. v
         elseif formattingOptions[k] == 3 then
             newFormatted[k] = (" "):rep(xSize-#v) .. v
         end
@@ -141,7 +141,7 @@ local function formatColors( text, original_fg, original_bg )
             color_match = v:match("^[$&][%xOo];")
 
             if not color_match then
-                match = v:match("(.-)[$&][%xOo];")
+                match = v:match("(.+)[$&][%xOo];")
             end
 
             if color_match then
