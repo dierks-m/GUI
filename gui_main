@@ -2,10 +2,10 @@
 local component = require("component")
 
 local GUIElements = {
-	CanvasObject	=	{".gui/CanvasObject", 0x01};
-	TextArea		=	{".gui/TextArea", 0x02};
-	Button			=	{".gui/Button", 0x04};
-	Input			=	{".gui/Input", 0x08}
+	CanvasObject	=	{"/home/lib_energy/api/lib_gui/CanvasObject", 0x01};
+	TextArea		=	{"/home/lib_energy/api/lib_gui/TextArea", 0x02};
+	Button			=	{"/home/lib_energy/api/lib_gui/Button", 0x04};
+	Input			=	{"/home/lib_energy/api/lib_gui/Input", 0x08}
 }
 
 local dependencies = {
@@ -16,62 +16,43 @@ local dependencies = {
 }
 
 local lookup = {
-	black		=	"f";
-	red			=	"e";
-	green		=	"d";
-	brown		=	"c";
-	blue		=	"b";
-	purple		=	"a";
-	cyan		=	"9";
-	lightGrey	=	"8";
-	lightGray	=	"8";
-	grey		=	"7";
-	gray		=	"7";
-	print		=	"6";
-	lime		=	"5";
-	yellow		=	"4";
-	lightBlue	=	"3";
-	magenta		=	"2";
-	orange		=	"1";
-	white		=	"0";
-}
-
-local reverseLookup = {
-	[ "f" ]	=	32768;
-	[ "e" ]	=	16384;
-	[ "d" ] =	8192;
-	[ "c" ] =	4096;
-	[ "b" ] =	2048;
-	[ "a" ] =	1024;
-	[ "9" ] =	512;
-	[ "8" ] =	256;
-	[ "7" ] =	128;
-	[ "6" ] =	64;
-	[ "5" ] =	32;
-	[ "4" ] =	16;
-	[ "3" ] =	8;
-	[ "2" ] =	4;
-	[ "1" ] =	2;
-	[ "0" ] =	1;
+	black		=	"0";
+	red			=	"1";
+	green		=	"2";
+	brown		=	"3";
+	blue		=	"4";
+	purple		=	"5";
+	cyan		=	"6";
+	lightGrey	=	"7";
+	lightGray	=	"7";
+	grey		=	"8";
+	gray		=	"8";
+	pink		=	"9";
+	lime		=	"a";
+	yellow		=	"b";
+	lightBlue	=	"c";
+	magenta		=	"d";
+	orange		=	"e";
+	white		=	"f";
 }
 
 local standardPalette = {
     0x000000;
-    0xFF0000;
-    0x008000;
-    0xA52A2A;
-    0x0000FF;
-    0x800080;
-    0x00FFFF;
-    0xD3D3D3;
-    0x808080;
-    0xFFC0CB;
-    0x00FF00;
-    0xFFFF00;
-    0xADD8E6;
-    0xFF00FF;
-    0xFFA500;
-    0xFFFFFF;
+    0xb3312c;
+    0x3b511a;
+    0x51301a;
+    0x253192;
+    0x7b2fbe;
+    0x287697;
+    0x999999;
+    0x434343;
+    0xd88198;
+    0x41cd34;
+    0xdede6c;
+    0x6689d3;
+    0xc354cd;
+    0xeb8844;
+    0xffffff;
 }
 
 _G.screen = {
@@ -128,7 +109,13 @@ local function bAssert ( state, msg, errLevel )
 end
 
 local function loadElement( name, env )
-	return loadfile(GUIElements[name][1], "bt", env)
+	local file = loadfile(GUIElements[name][1], "bt", env)
+
+    if not file then
+        error( "File not found" )
+    end
+
+    return file
 end
 
 function createGUIObject( args, objectType, parent, redirect )
@@ -183,6 +170,7 @@ for i = 1, #standardPalette do
 end
 
 return {
+    lookupColor = lookupColor;
     createGUIObject = createGUIObject;
     checkCanvasForClick = checkCanvasForClick;
 }
