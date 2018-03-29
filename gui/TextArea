@@ -32,7 +32,7 @@ self.margin_bottom = type(args.margin_bottom) == "number" and args.margin_bottom
 -- Functions --
 local function insertVariables ( text, variables )
 	return text:gsub( "$$(.-);", function ( varName )
-		return variables[ varName ] or "(var:" .. varName .. ")"
+		return #varName == 0 and "$$;" or variables[ varName ] or "(var:" .. varName .. ")"
 	end )
 end
 
@@ -52,7 +52,7 @@ local function formatText( text, xSize )
         formattingOptions[#formattingOptions+1] = currentFormatting
         firstMatch = v:match("^%s*[&$][RrMmLl];")
 
-        for match in v:gmatch("[&$]*[^&$]+") do
+        for match in v:gmatch("[&$]?[^&$]*") do
             local formattingSign = match:match("^%s*[&$]([RrMmLl]);")
 
             if formattingSign then
@@ -110,7 +110,7 @@ local function formatText( text, xSize )
                 match = match:match( "%S+" )
                 newFormatted[ #newFormatted+1 ] = match
                 table.insert(formattingOptions, i, currentFormatting)
-                xPos = #match
+                xPos = #match:gsub( "[$&][%xo];", "" ) + 1
             else
                 newFormatted[ #newFormatted ] = newFormatted[ #newFormatted ] .. match
                 xPos = xPos + #match:gsub( "[$&][%xo];", "" )
