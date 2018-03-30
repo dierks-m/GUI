@@ -44,6 +44,7 @@ local function formatText( text, xSize )
     local formatted = {}
     local newFormatted, xPos = {}
     local formattingOptions = {} -- 1, 2, 3 (left, middle, right)
+    local newFormattingOptions = {} -- New formatting for processed text
     local currentFormatting, firstMatch = 1
 
     for k, v in pairs(text) do
@@ -76,6 +77,7 @@ local function formatText( text, xSize )
         newFormatted[#newFormatted+1] = ""
         xPos = 1
         currentFormatting = formattingOptions[i]
+        newFormattingOptions[ #newFormattingOptions+1 ] = currentFormatting
 
         for match in formatted[i]:gmatch("%s*%S+") do
             local withoutColor = match:gsub("[&$][%xOo];", "")
@@ -103,13 +105,13 @@ local function formatText( text, xSize )
 
                     if #withoutColor > xSize then
                         newFormatted[#newFormatted+1] = ""
-                        table.insert(formattingOptions, i, currentFormatting)
+                        newFormattingOptions[ #newFormattingOptions+1 ] = currentFormatting
                     end
                 end
 
                 match = match:match( "%S+" )
                 newFormatted[ #newFormatted+1 ] = match
-                table.insert(formattingOptions, i, currentFormatting)
+                newFormattingOptions[ #newFormattingOptions+1 ] = currentFormatting
                 xPos = #match:gsub( "[$&][%xo];", "" ) + 1
             else
                 newFormatted[ #newFormatted ] = newFormatted[ #newFormatted ] .. match
@@ -119,9 +121,9 @@ local function formatText( text, xSize )
     end
 
     for k, v in pairs(newFormatted) do
-        if formattingOptions[k] == 2 then
+        if newFormattingOptions[k] == 2 then
             newFormatted[k] = (" "):rep(math.floor((xSize-#(v:gsub( "[&$][%xOo];", "" )))/2)) .. v
-        elseif formattingOptions[k] == 3 then
+        elseif newFormattingOptions[k] == 3 then
             newFormatted[k] = (" "):rep(xSize-#v) .. v
         end
     end
