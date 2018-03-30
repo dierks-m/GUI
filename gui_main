@@ -1,9 +1,9 @@
 -- Variables --
 local GUIElements = {
-	CanvasObject	=	{"/gui/CanvasObject", 0x01};
-	TextArea		=	{"/gui/TextArea", 0x02};
-	Button			=	{"/gui/Button", 0x04};
-	Input			=	{"/gui/Input", 0x08}
+	CanvasObject	=	{".rules/gui/CanvasObject", 0x01};
+	TextArea		=	{".rules/gui/TextArea", 0x02};
+	Button			=	{".rules/gui/Button", 0x04};
+	Input			=	{".rules/gui/Input", 0x08}
 }
 
 local dependencies = {
@@ -113,6 +113,32 @@ end
 
 function lookupColor( color )
 	return lookup[ color ]
+end
+
+function setPalette( tPalette, wrap )
+	assert( type( tPalette ) == "table", "Palette must be given in table form" )
+
+	local term = wrap or term
+
+	local colourIndex
+
+	for k, v in pairs( tPalette ) do
+		if lookup[ k ] then
+			colourIndex = reverseLookup[ lookup[ k ] ]
+		end
+
+		colourIndex = colourIndex or reverseLookup[ v ]
+
+		if colourIndex then
+			term.setPaletteColor( colourIndex,
+				bit.band( 255, v )/255,
+				bit.band( 255, bit.brshift( v, 8 ) )/255,
+				bit.band( 255, bit.brshift( v, 16 ) )/255
+		 	)
+		end
+	end
+
+	return true
 end
 -- Functions --
 
