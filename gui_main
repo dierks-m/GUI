@@ -127,7 +127,7 @@ function setPalette( tPalette, wrap )
 			colourIndex = reverseLookup[ lookup[ k ] ]
 		end
 
-		colourIndex = colourIndex or reverseLookup[ v ]
+		colourIndex = colourIndex or reverseLookup[ k ]
 
 		if colourIndex then
 			term.setPaletteColor( colourIndex,
