@@ -79,7 +79,7 @@ local function formatText( text, xSize )
         currentFormatting = formattingOptions[i]
         newFormattingOptions[ #newFormattingOptions+1 ] = currentFormatting
 
-        for match in formatted[i]:gmatch("%s*%S+") do
+        for match in formatted[i]:gmatch("%s*%S*") do
             local withoutColor = match:gsub("[&$][%xOo];", "")
 
             if #withoutColor > xSize-xPos+1 then
