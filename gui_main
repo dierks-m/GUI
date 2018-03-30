@@ -131,9 +131,9 @@ function setPalette( tPalette, wrap )
 
 		if colourIndex then
 			term.setPaletteColor( colourIndex,
-				bit.band( 255, v )/255,
+				bit.band( 255, bit.brshift( v, 16 ) )/255,
 				bit.band( 255, bit.brshift( v, 8 ) )/255,
-				bit.band( 255, bit.brshift( v, 16 ) )/255
+				bit.band( 255, v )/255
 		 	)
 		end
 	end
