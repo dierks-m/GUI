@@ -35,13 +35,13 @@ local function getSize( str, n, m )
 
 	for k in str:gmatch( "(-?%d+%.?%d*%%?)%s*,?" ) do
 		if k:match( "-?%d+%.?%d*%%" ) then
-			size = size + math.floor( k:match( "(-?%d+%.?%d*)%%" )/100*( m-n+1 )+0.5 )
-		elseif k:match( "-?%d+" ) then
+			size = size + k:match( "(-?%d+%.?%d*)%%" )/100*( m-n+1 )
+		elseif k:match( "-?%d+%.?%d*" ) then
 			size = size + k
 		end
 	end
 
-	return size > 0 and size or 0
+	return size > 0 and math.floor( size+0.5 ) or 0
 end
 
 local function getBounds()
@@ -55,6 +55,7 @@ local function getBounds()
 		sizing = parent.getBounds()
 	else
 		xSize, ySize = term.getSize()
+
 		sizing = {
 			x1	=	1;
 			x2	=	xSize;
@@ -69,8 +70,8 @@ local function getBounds()
 	coords.x2	=	self.right and sizing.x2-getSize( self.right, sizing.x1, sizing.x2 )
 
 	if not ( coords.x1 and coords.x2 ) and self.width then
-		coords.x1	=	not coords.x1 and coords.x2-( getSize( self.width, sizing.x1, sizing.x2 )-1 ) or coords.x1
-		coords.x2	=	not coords.x2 and coords.x1+( getSize( self.width, sizing.x1, sizing.x2 )-1 ) or coords.x2
+		coords.x1	=	not coords.x1 and coords.x2-getSize( self.width, sizing.x1, sizing.x2 )+1 or coords.x1
+		coords.x2	=	not coords.x2 and coords.x1+getSize( self.width, sizing.x1, sizing.x2 )-1 or coords.x2
 	end
 
 	-- y-Size --
@@ -79,8 +80,8 @@ local function getBounds()
 	coords.y2	=	self.bottom and sizing.y2-getSize( self.bottom, sizing.y1, sizing.y2 )
 
 	if not ( coords.y1 and coords.y2 ) and self.height then
-		coords.y1	=	not coords.y1 and coords.y2-( getSize( self.height, sizing.y1, sizing.y2 )-1 ) or coords.y1
-		coords.y2	=	not coords.y2 and coords.y1+( getSize( self.height, sizing.y1, sizing.y2 )-1 ) or coords.y2
+		coords.y1	=	not coords.y1 and coords.y2-getSize( self.height, sizing.y1, sizing.y2 )+1 or coords.y1
+		coords.y2	=	not coords.y2 and coords.y1+getSize( self.height, sizing.y1, sizing.y2 )-1 or coords.y2
 	end
 
 	coords.x1 = coords.x1 >= sizing.x1 and coords.x1 or sizing.x1
