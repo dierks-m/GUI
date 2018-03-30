@@ -33,10 +33,10 @@ local function getSize( str, n, m )
 	str = type( str ) == "string" and str or tostring( str )
 	local size = 0
 
-	for k in str:gmatch( "(-?%d+%.?%d*%%?)%s*,?" ) do
-		if k:match( "-?%d+%.?%d*%%" ) then
-			size = size + k:match( "(-?%d+%.?%d*)%%" )/100*( m-n+1 )
-		elseif k:match( "-?%d+%.?%d*" ) then
+	for k in str:gmatch( "(%-?%d+%.?%d*%%?)%s*,?" ) do
+		if k:match( "%-?%d+%.?%d*%%" ) then
+			size = size + k:match( "(%-?%d+%.?%d*)%%" )/100*( m-n+1 )
+		elseif k:match( "%-?%d+%.?%d*" ) then
 			size = size + k
 		end
 	end
