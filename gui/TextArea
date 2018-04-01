@@ -32,7 +32,7 @@ self.margin_bottom = type(args.margin_bottom) == "number" and args.margin_bottom
 -- Functions --
 local function insertVariables ( text, variables )
 	return text:gsub( "$$(.-);", function ( varName )
-		return variables[ varName ] or "(var:" .. varName .. ")"
+		return #varName == 0 and "$$;" or variables[ varName ] or "(var:" .. varName .. ")"
 	end )
 end
 
@@ -44,6 +44,7 @@ local function formatText( text, xSize )
     local formatted = {}
     local newFormatted, xPos = {}
     local formattingOptions = {} -- 1, 2, 3 (left, middle, right)
+    local newFormattingOptions = {} -- New formatting for processed text
     local currentFormatting, firstMatch = 1
 
     for k, v in pairs(text) do
@@ -52,7 +53,7 @@ local function formatText( text, xSize )
         formattingOptions[#formattingOptions+1] = currentFormatting
         firstMatch = v:match("^%s*[&$][RrMmLl];")
 
-        for match in v:gmatch("[&$]*[^&$]+") do
+        for match in v:gmatch("[&$]?[^&$]*") do
             local formattingSign = match:match("^%s*[&$]([RrMmLl]);")
 
             if formattingSign then
@@ -76,8 +77,9 @@ local function formatText( text, xSize )
         newFormatted[#newFormatted+1] = ""
         xPos = 1
         currentFormatting = formattingOptions[i]
+        newFormattingOptions[ #newFormattingOptions+1 ] = currentFormatting
 
-        for match in formatted[i]:gmatch("%s*%S+") do
+        for match in formatted[i]:gmatch("%s*%S*") do
             local withoutColor = match:gsub("[&$][%xOo];", "")
 
             if #withoutColor > xSize-xPos+1 then
@@ -103,14 +105,14 @@ local function formatText( text, xSize )
 
                     if #withoutColor > xSize then
                         newFormatted[#newFormatted+1] = ""
-                        table.insert(formattingOptions, i, currentFormatting)
+                        newFormattingOptions[ #newFormattingOptions+1 ] = currentFormatting
                     end
                 end
 
                 match = match:match( "%S+" )
                 newFormatted[ #newFormatted+1 ] = match
-                table.insert(formattingOptions, i, currentFormatting)
-                xPos = #match
+                newFormattingOptions[ #newFormattingOptions+1 ] = currentFormatting
+                xPos = #match:gsub( "[$&][%xo];", "" ) + 1
             else
                 newFormatted[ #newFormatted ] = newFormatted[ #newFormatted ] .. match
                 xPos = xPos + #match:gsub( "[$&][%xo];", "" )
@@ -119,9 +121,9 @@ local function formatText( text, xSize )
     end
 
     for k, v in pairs(newFormatted) do
-        if formattingOptions[k] == 2 then
+        if newFormattingOptions[k] == 2 then
             newFormatted[k] = (" "):rep(math.floor((xSize-#(v:gsub( "[&$][%xOo];", "" )))/2)) .. v
-        elseif formattingOptions[k] == 3 then
+        elseif newFormattingOptions[k] == 3 then
             newFormatted[k] = (" "):rep(xSize-#v) .. v
         end
     end
@@ -141,7 +143,7 @@ local function formatColors( text, original_fg, original_bg )
             color_match = v:match("^[$&][%xOo];")
 
             if not color_match then
-                match = v:match("(.+)[$&][%xOo];")
+                match = v:match("(.-)[$&][%xOo];")
             end
 
             if color_match then
@@ -185,14 +187,17 @@ local function draw( forceCalculation )
 
 	local lineLength = self.boundaries.x2-self.boundaries.x1+1
 
+	term.setTextColor(reverseLookup[self.fg_color])
+	term.setBackgroundColor(reverseLookup[self.bg_color])
+
 	for y = self.boundaries.y1, self.boundaries.y2 do
 		local textPos = y-self.boundaries.y1-self.margin_top+1
-		screen.setCursorPos(self.boundaries.x1, y)
-		screen.blit((" "):rep(lineLength), self.fg_color:rep(lineLength), self.bg_color:rep(lineLength))
-		screen.setCursorPos(self.boundaries.x1+self.margin_left, y)
+		term.setCursorPos(self.boundaries.x1, y)
+		term.blit((" "):rep(lineLength), self.fg_color:rep(lineLength), self.bg_color:rep(lineLength))
+		term.setCursorPos(self.boundaries.x1+self.margin_left, y)
 
 		if self.formattedText[textPos] and textPos <= self.boundaries.y2-self.boundaries.y1-self.margin_bottom+1 then
-			screen.blit(self.formattedText[textPos][1], self.formattedText[textPos][2], self.formattedText[textPos][3])
+			term.blit(self.formattedText[textPos][1], self.formattedText[textPos][2], self.formattedText[textPos][3])
 		end
 	end
 
