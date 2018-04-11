@@ -9,113 +9,121 @@ bAssert(args.top and args.bottom or ( args.top or args.bottom ) and args.height,
 
 
 -- Variables --
-self.left   = args.left;
-self.right    = args.right;
-self.top    = args.top;
-self.bottom   = args.bottom;
-self.width    = args.width;
-self.height   = args.height;
-self.children = {};
-self.boundaries = {};
+self.left		= args.left
+self.right		= args.right
+self.top		= args.top
+self.bottom		= args.bottom
+self.width		= args.width
+self.height		= args.height
+self.children	= {}
+self.boundaries	= {}
+self.overhangs	= {}
 -- Variables --
 
 
 -- Functions --
 local function getSize( str, n, m )
 	--[[
-  		Calculates the size of an object with the boundaries <n> and <m> with a given string.
-  		Allowed are percentage values and numeric values, mixing is possible, with commas as a separator.
+		Calculates the size of an object with the boundaries <n> and <m> with a given string.
+		Allowed are percentage values and numeric values, mixing is possible, with commas as a separator.
 
-  		Example:
-  		"-25.5%, 4"
-  	]]--
+		Example:
+		"-25.5%, 4"
+	]]--
 
-  	str = type( str ) == "string" and str or tostring( str )
-  	local size = 0
+	str = type( str ) == "string" and str or tostring( str )
+	local size = 0
 
-  	for k in str:gmatch( "(%-?%d+%.?%d*%%?)%s*,?" ) do
-  		if k:match( "%-?%d+%.?%d*%%" ) then
-  			size = size + k:match( "(%-?%d+%.?%d*)%%" )/100*( m-n+1 )
-  		elseif k:match( "%-?%d+%.?%d*" ) then
-  			size = size + k
-  		end
-  	end
+	for k in str:gmatch( "(%-?%d+%.?%d*%%?)%s*,?" ) do
+		if k:match( "%-?%d+%.?%d*%%" ) then
+			size = size + k:match( "(%-?%d+%.?%d*)%%" )/100*( m-n+1 )
+		elseif k:match( "%-?%d+%.?%d*" ) then
+			size = size + k
+		end
+	end
 
-  return size > 0 and math.floor( size+0.5 ) or 0
+	return math.floor( size+0.5 )
 end
 
 local function getBounds()
-  --[[
-    Get the exact boundaries for the current GUI object. If necessary the positions
-    are calculated relative to the parent object
-  ]]--
-  local coords, sizing, xSize, ySize = {}
+    --[[
+	    Get the exact boundaries for the current GUI object. If necessary the positions
+	    are calculated relative to the parent object
+    ]]--
+    local coords, sizing, xSize, ySize, overhangs = {}
 
-  if parent then
-    sizing = parent.getBounds()
-  else
-    xSize, ySize = screen.getSize()
-    sizing = {
-      x1  = 1;
-      x2  = xSize;
-      y1  = 1;
-      y2  = ySize;
-    }
-  end
+    if parent then
+        sizing, overhangs = parent.getBounds()
+    else
+        xSize, ySize = screen.getSize()
+        sizing = {
+	        x1  = 1;
+	        x2  = xSize;
+	        y1  = 1;
+	        y2  = ySize;
+        }
+		overhangs = {
+			left	=	0;
+			right	=	0;
+			top		=	0;
+			bottom	=	0;
+		}
+    end
 
-  -- x-Size --
+    -- x-Size --
 
-  coords.x1 = self.left and sizing.x1+getSize( self.left, sizing.x1, sizing.x2 )
-  coords.x2 = self.right and sizing.x2-getSize( self.right, sizing.x1, sizing.x2 )
+    coords.x1 = self.left and sizing.x1+getSize( self.left, sizing.x1, sizing.x2 )
+	coords.x2 = self.right and sizing.x2-getSize( self.right, sizing.x1, sizing.x2 )
 
-  if not ( coords.x1 and coords.x2 ) and self.width then
-    coords.x1 = not coords.x1 and coords.x2-( getSize( self.width, sizing.x1, sizing.x2 )-1 ) or coords.x1
-    coords.x2 = not coords.x2 and coords.x1+( getSize( self.width, sizing.x1, sizing.x2 )-1 ) or coords.x2
-  end
+    if not ( coords.x1 and coords.x2 ) and self.width then
+	    coords.x1 = not coords.x1 and coords.x2-( getSize( self.width, sizing.x1, sizing.x2 )-1 ) or coords.x1
+	    coords.x2 = not coords.x2 and coords.x1+( getSize( self.width, sizing.x1, sizing.x2 )-1 ) or coords.x2
+    end
 
-  -- y-Size --
+    -- y-Size --
 
-  coords.y1 = self.top and sizing.y1+getSize( self.top, sizing.y1, sizing.y2 )
-  coords.y2 = self.bottom and sizing.y2-getSize( self.bottom, sizing.y1, sizing.y2 )
+    coords.y1 = self.top and sizing.y1+getSize( self.top, sizing.y1, sizing.y2 )
+    coords.y2 = self.bottom and sizing.y2-getSize( self.bottom, sizing.y1, sizing.y2 )
 
-  if not ( coords.y1 and coords.y2 ) and self.height then
-    coords.y1 = not coords.y1 and coords.y2-( getSize( self.height, sizing.y1, sizing.y2 )-1 ) or coords.y1
-    coords.y2 = not coords.y2 and coords.y1+( getSize( self.height, sizing.y1, sizing.y2 )-1 ) or coords.y2
-  end
+    if not ( coords.y1 and coords.y2 ) and self.height then
+	    coords.y1 = not coords.y1 and coords.y2-( getSize( self.height, sizing.y1, sizing.y2 )-1 ) or coords.y1
+	    coords.y2 = not coords.y2 and coords.y1+( getSize( self.height, sizing.y1, sizing.y2 )-1 ) or coords.y2
+    end
 
-  coords.x1 = coords.x1 >= sizing.x1 and coords.x1 or sizing.x1
-  coords.x2 = coords.x2 <= sizing.x2 and coords.x2 or sizing.x2
-  coords.y1 = coords.y1 >= sizing.y1 and coords.y1 or sizing.y1
-  coords.y2 = coords.y2 <= sizing.y2 and coords.y2 or sizing.y2
+	overhangs.left		=	coords.x1 < sizing.x1+overhangs.left and sizing.x1-coords.x1+overhangs.left or 0
+	overhangs.right		=	coords.x2 > sizing.x2-overhangs.right and coords.x2-sizing.x2+overhangs.right or 0
+	overhangs.top		=	coords.y1 < sizing.y1+overhangs.top and sizing.y1-coords.y1+overhangs.top or 0
+	overhangs.bottom	=	coords.y2 > sizing.y2-overhangs.bottom and coords.y2-sizing.y2+overhangs.bottom or 0
 
-  return coords
+    return coords, overhangs
 end
 
 local function draw()
-  --[[
-    Draws the object and all of its children
-  ]]--
-  if #self.boundaries == 0 or self.forcedCalculation then
-    self.boundaries = getBounds()
-  end
+	--[[
+		Draws the object and all of its children
+	]]--
+	if #self.boundaries == 0 or self.forcedCalculation then
+		self.boundaries, self.overhangs = getBounds()
+		self.forcedCalculation = false
+	end
 
-  local lineLength = self.boundaries.x2-self.boundaries.x1+1
+	local lineLength = self.boundaries.x2-self.boundaries.x1-self.overhangs.left-self.overhangs.right+1
 
-  for y = self.boundaries.y1, self.boundaries.y2 do
-    screen.setCursorPos(self.boundaries.x1, y)
-    screen.blit((" "):rep(lineLength), ("f"):rep(lineLength), self.bg_color:rep(lineLength))
-  end
+	for y = self.boundaries.y1+self.overhangs.top, self.boundaries.y2-self.overhangs.bottom do
+		screen.setCursorPos(self.boundaries.x1+self.overhangs.left, y)
+		screen.blit((" "):rep(lineLength), ("f"):rep(lineLength), self.bg_color:rep(lineLength))
+	end
 
-  for k, v in pairs(self.children) do
-    v.draw()
-  end
+	for k, v in pairs(self.children) do
+		v.draw()
+	end
 end
 
 local function registerChildren( element )
-  --[[
-    Registers a child element so that its draw function can be triggered
-  ]]--
-  self.children[#self.children+1] = element
+	--[[
+		Registers a child element so that its draw function can be triggered
+	]]--
+	self.children[#self.children+1] = element
 end
 
 local function setBackgroundColor( colour )
@@ -128,7 +136,7 @@ local function setBackgroundColor( colour )
   ]]--
 
     if lookup[ colour ] then
-        self.bg_color = lookup[ colour ]
+    	self.bg_color = lookup[ colour ]
     else
         self.bg_color = colour:match( "%x" ) and colour or self.bg_color
     end
@@ -147,11 +155,11 @@ local function setTextColor( colour )
 end
 
 local function triggerCalculation()
-  self.forcedCalculation = true
+	self.forcedCalculation = true
 
-  for k, v in pairs(self.children) do
-    v.triggerCalculation()
-  end
+    for k, v in pairs(self.children) do
+        v.triggerCalculation()
+    end
 end
 
 local function setBoundaries( args )
