@@ -107,12 +107,14 @@ local function draw()
 		self.forcedCalculation = false
 	end
 
-	local lineLength = self.boundaries.x2-self.boundaries.x1-self.overhangs.left-self.overhangs.right+1
-
-	for y = self.boundaries.y1+self.overhangs.top, self.boundaries.y2-self.overhangs.bottom do
-		screen.setCursorPos(self.boundaries.x1+self.overhangs.left, y)
-		screen.blit((" "):rep(lineLength), ("f"):rep(lineLength), self.bg_color:rep(lineLength))
-	end
+	gpu.setBackground( tonumber( self.bg_color, 16 ), true )
+	gpu.fill(
+		self.boundaries.x1+self.overhangs.left,
+		self.boundaries.y1+self.overhangs.top,
+		self.boundaries.x2-self.boundaries.x1-self.overhangs.left-self.overhangs.right+1,
+		self.boundaries.y2-self.boundaries.y1-self.overhangs.top-self.overhangs.bottom+1,
+		" "
+	)
 
 	for k, v in pairs(self.children) do
 		v.draw()
@@ -163,16 +165,28 @@ local function triggerCalculation()
 end
 
 local function setBoundaries( args )
-  bAssert(type(args) == "table", "Boundaries must be given in table", 1)
+	bAssert(type(args) == "table", "Boundaries must be given in table", 1)
 
-  self.left = args.left or self.left
-  self.right = args.right or self.right
-  self.top = args.top or self.top
-  self.bottom = args.bottom or self.bottom
-  self.width = args.width or self.width
-  self.height = args.height or self.height
+	local oldWidth, oldHeight = self.boundaries.x2-self.boundaries.x1+1, self.boundaries.y2-self.boundaries.y1+1
 
-  triggerCalculation()
+	self.left = args.left or self.left
+	self.right = args.right or self.right
+	self.top = args.top or self.top
+	self.bottom = args.bottom or self.bottom
+	self.width = args.width or self.width
+	self.height = args.height or self.height
+
+	self.boundaries, self.overhangs = getBounds()
+
+	--[[
+		Prevent complete recalculation for more advanced objects like TextArea
+		As this would process text and take more time
+	]]--
+	if self.boundaries.x2-self.boundaries.x1+1 ~= oldWidth or
+		self.boundaries.y2-self.boundaries.y1+1 ~= oldHeight then
+
+		triggerCalculation()
+	end
 end
 -- Functions --
 
@@ -180,21 +194,23 @@ end
 setBackgroundColor(args.bg_color or "f")
 setTextColor(args.fg_color or "0")
 
+self.boundaries, self.overhangs = getBounds()
+
 object = {
-  --getSize     = getSize;
-  getBounds     = getBounds;
-  draw        = draw;
-  GUIObjectType   = 0x01;
-  registerChildren  = registerChildren;
-  setBackgroundColor  = setBackgroundColor;
-  setTextColor    = setTextColor;
-  setBoundaries   = setBoundaries;
-  triggerCalculation  = triggerCalculation;
-  children      = self.children;
+	--getSize     = getSize;
+	getBounds     = getBounds;
+	draw        = draw;
+	GUIObjectType   = 0x01;
+	registerChildren  = registerChildren;
+	setBackgroundColor  = setBackgroundColor;
+	setTextColor    = setTextColor;
+	setBoundaries   = setBoundaries;
+	triggerCalculation  = triggerCalculation;
+	children      = self.children;
 }
 
 if parent then
-  parent.registerChildren(object)
+	parent.registerChildren(object)
 end
 
 return object
