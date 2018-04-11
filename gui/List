@@ -1,0 +1,116 @@
+-- Variables --
+local rawArgs = {...}
+
+local args = rawArgs[1]
+local object = rawArgs[2]
+object.GUIObjectType = 0x10
+
+
+--	Scroll position to shift child elements
+self.verticalScroll = 0
+self.totalScroll = -1
+--	Save element heights so they don't have to be calculated each time
+self.childHeights = {}
+-- Variables --
+
+
+-- Functions --
+local function calculateTotalScroll()
+	local ySize, childBoundaries
+	local listLength = 0
+
+	if #self.boundaries == 0 or self.forcedCalculation then
+		self.boundaries, self.overhangs = object.getBounds()
+	end
+
+	ySize = self.boundaries.y2-self.boundaries.y1+1
+
+	for k, v in pairs( self.children ) do
+		childBoundaries = v.getBounds()
+		self.childHeights[ k ] = childBoundaries.y2-childBoundaries.y1+1
+
+		listLength = listLength + childBoundaries.y2-childBoundaries.y1+1
+	end
+
+	self.totalScroll = math.max( 0, listLength-ySize )
+end
+
+local function setPositions()
+	local currentPosition = 0
+
+	for k, v in ipairs( self.children ) do
+		v.setBoundaries( { top = currentPosition-self.verticalScroll } )
+		currentPosition = currentPosition + self.childHeights[ k ]
+	end
+end
+
+local function draw()
+	if self.totalScroll == -1 or self.forcedCalculation then
+		calculateTotalScroll()
+		setPositions()
+		self.forcedCalculation = false
+	end
+
+	local currentPosition = 1
+
+	gpu.setBackground( tonumber( self.bg_color, 16 ), true )
+
+	gpu.fill(
+		self.boundaries.x1+self.overhangs.left,
+		self.boundaries.y1+self.overhangs.top,
+		self.boundaries.x2-self.boundaries.x1-self.overhangs.left-self.overhangs.right+1,
+		self.boundaries.y2-self.boundaries.y1-self.overhangs.top-self.overhangs.bottom+1,
+		" "
+ 	)
+
+	for k, v in ipairs( self.children ) do
+		if currentPosition-self.verticalScroll+self.childHeights[ k ]-1 >= 0 then
+
+			v.draw()
+		end
+
+		currentPosition = currentPosition + self.childHeights[ k ]
+
+		if currentPosition-self.verticalScroll > self.boundaries.y2-self.boundaries.y1+1 then
+			break
+		end
+	end
+end
+
+local function setScroll( nPosition, bIncDec )
+	--[[
+		Scroll the list directly to nPosition or, if bIncDec is given, increment or decrement by nPosition
+
+		Returns true if the actual position has changed, false, if not
+	]]--
+
+	if bIncDec then
+		nPosition = self.verticalScroll + nPosition
+	end
+
+	local previousPosition = self.verticalScroll
+
+	if nPosition >= 0 and nPosition <= self.totalScroll then
+		self.verticalScroll = nPosition
+	elseif nPosition < 0 then
+		self.verticalScroll = 0
+	else
+		self.verticalScroll = self.totalScroll
+	end
+
+	if self.verticalScroll ~= previousPosition then
+		setPositions()
+		return true
+	else
+		return false
+	end
+end
+-- Functions --
+
+
+-- Returning of element --
+object.draw = draw
+object.setScroll = setScroll
+
+return object
+-- Returning of element --
