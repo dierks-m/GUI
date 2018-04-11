@@ -37,7 +37,7 @@ local function insertVariables ( text, variables )
 end
 
 local function formatText( text, xSize )
-    if xSize < 2 then
+    if xSize < 1 then
         return {""}
     end
 
@@ -99,8 +99,8 @@ local function formatText( text, xSize )
                         end
                     end
 
-                    newFormatted[#newFormatted] = newFormatted[#newFormatted] .. match:sub(1, currPos) .. "-"
-                    match = match:sub(currPos+1)
+                    newFormatted[#newFormatted] = newFormatted[ #newFormatted ] .. match:sub( 1, currPos ) .. ( xSize > 1 and "-" or "" )
+                    match = match:sub( currPos+( xSize > 1 and 1 or 0 ) )
                     withoutColor = match:gsub("[$&][%xOo];", "")
 
                     if #withoutColor > xSize then
