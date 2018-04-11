@@ -64,8 +64,7 @@ local function draw()
  	)
 
 	for k, v in ipairs( self.children ) do
-		if currentPosition-self.verticalScroll+self.childHeights[ k ]-1 >= 0 then
-
+		if currentPosition-self.verticalScroll+self.childHeights[ k ]-1 > 0 then
 			v.draw()
 		end
 
