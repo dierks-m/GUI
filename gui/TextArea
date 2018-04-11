@@ -193,6 +193,13 @@ local function draw()
 
 	-- Cut off the text if the TextArea has an overhang to the left or right
 	local textX1 = 1+self.overhangs.left
+
+	--[[
+		The starting position for text drawing has to remove overhanging margins to correctly
+		calculate the positions
+	]]--
+	local marginTop = self.overhangs.top < self.margin_top and self.margin_top-self.overhangs.top or self.overhangs.top
+	local marginBottom = self.overhangs.bottom < self.margin_bottom and self.margin_bottom-self.overhangs.bottom or self.overhangs.bottom
 	local textPos
 
 	gpu.setBackground( tonumber( self.bg_color, 16 ), true )
@@ -204,13 +211,14 @@ local function draw()
 		" "
  	)
 
-	for y = self.boundaries.y1+self.overhangs.top+self.margin_top, self.boundaries.y2-self.overhangs.bottom-self.margin_bottom do
+	for y = self.boundaries.y1+marginTop, self.boundaries.y2-marginBottom do
 		textPos = y-self.boundaries.y1-self.margin_top+1
 
-		screen.setCursorPos(self.boundaries.x1+self.overhangs.left+self.margin_left, y)
+		screen.setCursorPos( self.boundaries.x1+self.overhangs.left+self.margin_left, y )
 
-		if self.formattedText[textPos] then
-			screen.blit( self.formattedText[textPos][1]:sub( textX1, lineLength+textX1-1 ),
+		if self.formattedText[ textPos ] then
+			screen.blit(
+				self.formattedText[textPos][1]:sub( textX1, lineLength+textX1-1 ),
 				self.formattedText[textPos][2]:sub( textX1, lineLength+textX1-1 ),
 				self.formattedText[textPos][3]:sub( textX1, lineLength+textX1-1 )
 			)
