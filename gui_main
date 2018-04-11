@@ -2,17 +2,17 @@
 local component = require("component")
 
 local GUIElements = {
-	CanvasObject	=	{"/home/lib_energy/api/lib_gui/CanvasObject", 0x01};
-	TextArea		=	{"/home/lib_energy/api/lib_gui/TextArea", 0x02};
-	Button			=	{"/home/lib_energy/api/lib_gui/Button", 0x04};
-	Input			=	{"/home/lib_energy/api/lib_gui/Input", 0x08}
+	CanvasObject	=	{"lib_banned/lib_gui/CanvasObject", 0x01};
+	TextArea		=	{"lib_banned/lib_gui/TextArea", 0x02};
+	Button			=	{"lib_banned/lib_gui/Button", 0x04};
+	List			=	{"lib_banned/lib_gui/List", 0x08}
 }
 
 local dependencies = {
 	CanvasObject	=	{};
 	TextArea		=	{"CanvasObject"};
 	Button			=	{"CanvasObject", "TextArea"};
-	Input			=	{"CanvasObject"}
+	List			=	{"CanvasObject"};
 }
 
 local lookup = {
@@ -109,10 +109,14 @@ local function bAssert ( state, msg, errLevel )
 end
 
 local function loadElement( name, env )
-	local file = loadfile(GUIElements[name][1], "bt", env)
+	local file, err = loadfile(GUIElements[name][1], "bt", env)
 
     if not file then
-        error( "File not found" )
+		if err then
+			error( err )
+		else
+        	error( "File not found" )
+		end
     end
 
     return file
@@ -127,6 +131,7 @@ function createGUIObject( args, objectType, parent, redirect )
 		bAssert			=	bAssert;
 		self			=	self;
 		screen			=	redirect or screen;
+		gpu				=	gpu;
 	}
 
 	setmetatable(environment, {__index=_G})
@@ -163,6 +168,18 @@ end
 function lookupColor( color )
 	return lookup[ color ]
 end
+
+function setPalette( tPalette )
+	assert( type( tPalette ) == "table", "Palette must be given in table form" )
+
+	for k, v in pairs( tPalette ) do
+		if lookup[ k ] then
+			gpu.setPaletteColor( tonumber( lookup[ k ], 16 ), v )
+		elseif tonumber( v, 16 ) then
+			gpu.setPaletteColor( tonumber( k, 16 ), v )
+		end
+	end
+end
 -- Functions --
 
 for i = 1, #standardPalette do
@@ -173,4 +190,5 @@ return {
     lookupColor = lookupColor;
     createGUIObject = createGUIObject;
     checkCanvasForClick = checkCanvasForClick;
+	setPalette = setPalette;
 }
