@@ -1,111 +1,206 @@
--- Initialization Phase --
-local rawArgs = {...}
-local args, parent = rawArgs[1], rawArgs[2] -- Receive given arguments when creating the object
-local object = {}
-
-bAssert(args.left and args.right or ( args.left or args.right ) and args.width, "x-Size not defined", 1)
-bAssert(args.top and args.bottom or ( args.top or args.bottom ) and args.height, "y-Size not defined", 1)
--- Initialization Phase --
-
-
 -- Variables --
-self.left		= args.left
-self.right		= args.right
-self.top		= args.top
-self.bottom		= args.bottom
-self.width		= args.width
-self.height		= args.height
-self.children	= {}
-self.boundaries	= {}
-self.overhangs	= {}
+local rawArgs = {...}
+
+local object = rawArgs[2]
+local args = rawArgs[1]
+object.GUIObjectType = 0x02
+
+bAssert(type(args.text) == "nil" or type(args.text) == "table", "Text must be given in table form", 1)
+bAssert(type(args.variables) == "nil" or type(args.variables) == "table", "Variables must be given in table form", 1)
+
+if args.text then
+    for k, v in pairs(args.text) do
+        bAssert(type(v) == "string", "Malformed text", 1)
+    end
+end
+
+self.text = args.text or {}
+self.variables = args.variables or {}
+self.formattedText = {}
+
+if type(args.margin) == "number" then
+    self.margin_left, self.margin_right, self.margin_top, self.margin_bottom = args.margin, args.margin, args.margin, args.margin
+end
+
+self.margin_left = type(args.margin_left) == "number" and args.margin_left or self.margin_left or 0
+self.margin_right = type(args.margin_right) == "number" and args.margin_right or self.margin_right or 0
+self.margin_top = type(args.margin_top) == "number" and args.margin_top or self.margin_top or 0
+self.margin_bottom = type(args.margin_bottom) == "number" and args.margin_bottom or self.margin_bottom or 0
 -- Variables --
 
 
 -- Functions --
-local function getSize( str, n, m )
-	--[[
-		Calculates the size of an object with the boundaries <n> and <m> with a given string.
-		Allowed are percentage values and numeric values, mixing is possible, with commas as a separator.
-
-		Example:
-		"-25.5%, 4"
-	]]--
-
-	str = type( str ) == "string" and str or tostring( str )
-	local size = 0
-
-	for k in str:gmatch( "(%-?%d+%.?%d*%%?)%s*,?" ) do
-		if k:match( "%-?%d+%.?%d*%%" ) then
-			size = size + k:match( "(%-?%d+%.?%d*)%%" )/100*( m-n+1 )
-		elseif k:match( "%-?%d+%.?%d*" ) then
-			size = size + k
-		end
-	end
-
-	return math.floor( size+0.5 )
+local function insertVariables ( text, variables )
+	return text:gsub( "%%%%(.-);", function ( varName )
+		return variables[ varName ] or "(var:" .. varName .. ")"
+	end )
 end
 
-local function getBounds()
-    --[[
-	    Get the exact boundaries for the current GUI object. If necessary the positions
-	    are calculated relative to the parent object
-    ]]--
-    local coords, sizing, xSize, ySize, overhangs = {}
-
-    if parent then
-        sizing, overhangs = parent.getBounds()
-    else
-        xSize, ySize = screen.getSize()
-        sizing = {
-	        x1  = 1;
-	        x2  = xSize;
-	        y1  = 1;
-	        y2  = ySize;
-        }
-		overhangs = {
-			left	=	0;
-			right	=	0;
-			top		=	0;
-			bottom	=	0;
-		}
+local function formatText( text, xSize )
+    if xSize < 1 then
+        return {""}
     end
 
-    -- x-Size --
+    local formatted = {}
+    local newFormatted, xPos = {}
+    local formattingOptions = {} -- 1, 2, 3 (left, middle, right)
+    local newFormattingOptions = {} -- New formatting for processed text
+    local currentFormatting, firstMatch = 1
 
-    coords.x1 = self.left and sizing.x1+getSize( self.left, sizing.x1, sizing.x2 )
-	coords.x2 = self.right and sizing.x2-getSize( self.right, sizing.x1, sizing.x2 )
+    for k, v in pairs(text) do
+        v = insertVariables(v, self.variables)
+        formatted[#formatted+1] = ""
+        formattingOptions[#formattingOptions+1] = currentFormatting
+        firstMatch = v:match("^%s*[&$][RrMmLl];")
 
-    if not ( coords.x1 and coords.x2 ) and self.width then
-	    coords.x1 = not coords.x1 and coords.x2-( getSize( self.width, sizing.x1, sizing.x2 )-1 ) or coords.x1
-	    coords.x2 = not coords.x2 and coords.x1+( getSize( self.width, sizing.x1, sizing.x2 )-1 ) or coords.x2
+        for match in v:gmatch("[&$]?[^&$]*") do
+            local formattingSign = match:match("^%s*[&$]([RrMmLl]);")
+
+            if formattingSign then
+                if not firstMatch then
+                    formatted[#formatted+1] = ""
+                    formattingOptions[#formattingOptions+1] = 1
+                end
+
+                formatted[#formatted] = formatted[#formatted] .. match:match("^[&$][RrMmLl];(.*)")
+                currentFormatting = formattingSign:lower() == "l" and 1 or formattingSign:lower() == "m" and 2 or 3
+                formattingOptions[#formattingOptions] = currentFormatting
+            else
+                formatted[#formatted] = formatted[#formatted] .. match
+            end
+
+            firstMatch = false
+        end
     end
 
-    -- y-Size --
+    for i = 1, #formatted do
+        newFormatted[#newFormatted+1] = ""
+        xPos = 1
+        currentFormatting = formattingOptions[i]
+        newFormattingOptions[ #newFormattingOptions+1 ] = currentFormatting
 
-    coords.y1 = self.top and sizing.y1+getSize( self.top, sizing.y1, sizing.y2 )
-    coords.y2 = self.bottom and sizing.y2-getSize( self.bottom, sizing.y1, sizing.y2 )
+        for match in formatted[i]:gmatch("%s*%S*") do
+            local withoutColor = match:gsub("[&$][%xOo];", "")
 
-    if not ( coords.y1 and coords.y2 ) and self.height then
-	    coords.y1 = not coords.y1 and coords.y2-( getSize( self.height, sizing.y1, sizing.y2 )-1 ) or coords.y1
-	    coords.y2 = not coords.y2 and coords.y1+( getSize( self.height, sizing.y1, sizing.y2 )-1 ) or coords.y2
+            if #withoutColor > xSize-xPos+1 then
+                while #withoutColor > xSize do
+                    local rest = xSize-#newFormatted[ #newFormatted ]:gsub("[$&][%xRrLlMmo];", "")
+                    local currPos, actPos = 0, 0
+
+                    while currPos < #match do
+                        if not match:sub( currPos ):match( "^[$&][%xo];" ) then
+                            if actPos >= rest-1 then
+                                break
+                            end
+                            currPos = currPos + 1
+                            actPos = actPos + 1
+                        else
+                            currPos = currPos + 3
+                        end
+                    end
+
+                    newFormatted[#newFormatted] = newFormatted[ #newFormatted ] .. match:sub( 1, currPos ) .. ( xSize > 1 and "-" or "" )
+                    match = match:sub( currPos+( xSize > 1 and 1 or 0 ) )
+                    withoutColor = match:gsub("[$&][%xOo];", "")
+
+                    if #withoutColor > xSize then
+                        newFormatted[#newFormatted+1] = ""
+                        newFormattingOptions[ #newFormattingOptions+1 ] = currentFormatting
+                    end
+                end
+
+                match = match:match( "%S+" )
+                newFormatted[ #newFormatted+1 ] = match
+                newFormattingOptions[ #newFormattingOptions+1 ] = currentFormatting
+                xPos = #match:gsub( "[$&][%xo];", "" ) + 1
+            else
+                newFormatted[ #newFormatted ] = newFormatted[ #newFormatted ] .. match
+                xPos = xPos + #match:gsub( "[$&][%xo];", "" )
+            end
+        end
     end
 
-	overhangs.left		=	coords.x1 < sizing.x1+overhangs.left and sizing.x1-coords.x1+overhangs.left or 0
-	overhangs.right		=	coords.x2 > sizing.x2-overhangs.right and coords.x2-sizing.x2+overhangs.right or 0
-	overhangs.top		=	coords.y1 < sizing.y1+overhangs.top and sizing.y1-coords.y1+overhangs.top or 0
-	overhangs.bottom	=	coords.y2 > sizing.y2-overhangs.bottom and coords.y2-sizing.y2+overhangs.bottom or 0
+    for k, v in pairs(newFormatted) do
+        if newFormattingOptions[k] == 2 then
+            newFormatted[k] = (" "):rep(math.floor((xSize-#(v:gsub( "[&$][%xOo];", "" )))/2)) .. v
+        elseif newFormattingOptions[k] == 3 then
+            newFormatted[k] = (" "):rep(xSize-#v) .. v
+        end
+    end
 
-    return coords, overhangs
+    return newFormatted
+end
+
+local function formatColors( text, original_fg, original_bg )
+    local current_fg, current_bg = original_fg, original_bg
+    local match, color_match
+    local formatted = {}
+
+    for k, v in pairs(text) do
+        formatted[#formatted+1] = {"", "", ""}
+
+        while #v > 0 do
+            color_match = v:match("^[$&][%xOo];")
+
+            if not color_match then
+                match = v:match("(.-)[$&][%xOo];")
+            end
+
+            if color_match then
+                if color_match:sub(1, 1) == "&" then
+                    current_fg = color_match:sub(2, 2)
+                    current_fg = current_fg:lower() == "o" and original_fg or current_fg
+                else
+                    current_bg = color_match:sub(2, 2)
+                    current_bg = current_bg:lower() == "o" and original_bg or current_bg
+                end
+
+                v = v:sub(4)
+            else
+                match = match or v
+
+                formatted[#formatted][1] = formatted[#formatted][1] .. match
+                formatted[#formatted][2] = formatted[#formatted][2] .. current_fg:rep(#match)
+                formatted[#formatted][3] = formatted[#formatted][3] .. current_bg:rep(#match)
+
+                v = v:sub(#match+1)
+            end
+        end
+    end
+
+    return formatted
+end
+
+local function processText()
+    self.formattedText = formatColors(formatText(self.text, self.boundaries.x2-self.boundaries.x1-self.margin_left-self.margin_right+1), self.fg_color, self.bg_color)
 end
 
 local function draw()
-	--[[
-		Draws the object and all of its children
-	]]--
 	if #self.boundaries == 0 or self.forcedCalculation then
-		self.boundaries, self.overhangs = getBounds()
+		self.boundaries, self.overhangs = object.getBounds()
+	end
+
+	if #self.formattedText == 0 or self.forcedCalculation then
+		processText()
 		self.forcedCalculation = false
 	end
+
+	local lineLength = self.boundaries.x2-self.boundaries.x1-self.overhangs.left-self.overhangs.right+1
+
+	if lineLength < 1 then
+		return
+	end
+
+	-- Cut off the text if the TextArea has an overhang to the left or right
+	local textX1 = 1+self.overhangs.left
+
+	--[[
+		The starting position for text drawing has to remove overhanging margins to correctly
+		calculate the positions
+	]]--
+	local marginTop = self.overhangs.top < self.margin_top and self.margin_top-self.overhangs.top or self.overhangs.top
+	local marginBottom = self.overhangs.bottom < self.margin_bottom and self.margin_bottom-self.overhangs.bottom or self.overhangs.bottom
+	local textPos
 
 	gpu.setBackground( tonumber( self.bg_color, 16 ), true )
 	gpu.fill(
@@ -114,104 +209,66 @@ local function draw()
 		self.boundaries.x2-self.boundaries.x1-self.overhangs.left-self.overhangs.right+1,
 		self.boundaries.y2-self.boundaries.y1-self.overhangs.top-self.overhangs.bottom+1,
 		" "
-	)
+ 	)
+
+	for y = self.boundaries.y1+marginTop, self.boundaries.y2-marginBottom do
+		textPos = y-self.boundaries.y1-self.margin_top+1
+
+		screen.setCursorPos( self.boundaries.x1+self.overhangs.left+self.margin_left, y )
+
+		if self.formattedText[ textPos ] then
+			screen.blit(
+				self.formattedText[textPos][1]:sub( textX1, lineLength+textX1-1 ),
+				self.formattedText[textPos][2]:sub( textX1, lineLength+textX1-1 ),
+				self.formattedText[textPos][3]:sub( textX1, lineLength+textX1-1 )
+			)
+		end
+	end
 
 	for k, v in pairs(self.children) do
 		v.draw()
 	end
 end
 
-local function registerChildren( element )
-	--[[
-		Registers a child element so that its draw function can be triggered
-	]]--
-	self.children[#self.children+1] = element
-end
+local function setText( text )
+    bAssert(type(text) == "table", "Text must be given in table form", 1)
 
-local function setBackgroundColor( colour )
-  --[[
-    Sets the background color for the current object.
-    Color names, hex numbers and powers of two are allowed
+    self.text = {}
 
-    Example:
-    "red", "lightBlue", "a", "f", 32768, 16384
-  ]]--
-
-    if lookup[ colour ] then
-    	self.bg_color = lookup[ colour ]
-    else
-        self.bg_color = colour:match( "%x" ) and colour or self.bg_color
+    for k, v in pairs(text) do
+        if type(v) == "string" then
+            self.text[#self.text+1] = v
+        end
     end
 
+    if #self.boundaries == 0 or self.forcedCalculation then
+        self.boundaries = object.getBounds()
+    end
+
+    processText()
+end
+
+local function setVariable( name, value )
+    self.variables[name] = value
     self.forcedCalculation = true
 end
 
-local function setTextColor( colour )
-    if lookup[ colour ] then
-        self.fg_color = lookup[ colour ]
-    else
-        self.fg_color = colour:match( "%x" ) and colour or self.fg_color
+local function getText()
+    local text = {}
+
+    for i = 1, #self.text do
+        text[i] = self.text[i]
     end
 
-    self.forcedCalculation = true
-end
-
-local function triggerCalculation()
-	self.forcedCalculation = true
-
-    for k, v in pairs(self.children) do
-        v.triggerCalculation()
-    end
-end
-
-local function setBoundaries( args )
-	bAssert(type(args) == "table", "Boundaries must be given in table", 1)
-
-	local oldWidth, oldHeight = self.boundaries.x2-self.boundaries.x1+1, self.boundaries.y2-self.boundaries.y1+1
-
-	self.left = args.left or self.left
-	self.right = args.right or self.right
-	self.top = args.top or self.top
-	self.bottom = args.bottom or self.bottom
-	self.width = args.width or self.width
-	self.height = args.height or self.height
-
-	self.boundaries, self.overhangs = getBounds()
-
-	--[[
-		Prevent complete recalculation for more advanced objects like TextArea
-		As this would process text and take more time
-	]]--
-	if self.boundaries.x2-self.boundaries.x1+1 ~= oldWidth or
-		self.boundaries.y2-self.boundaries.y1+1 ~= oldHeight then
-
-		triggerCalculation()
-	end
+    return text
 end
 -- Functions --
 
 -- Returning of element --
-setBackgroundColor(args.bg_color or "f")
-setTextColor(args.fg_color or "0")
-
-self.boundaries, self.overhangs = getBounds()
-
-object = {
-	--getSize     = getSize;
-	getBounds     = getBounds;
-	draw        = draw;
-	GUIObjectType   = 0x01;
-	registerChildren  = registerChildren;
-	setBackgroundColor  = setBackgroundColor;
-	setTextColor    = setTextColor;
-	setBoundaries   = setBoundaries;
-	triggerCalculation  = triggerCalculation;
-	children      = self.children;
-}
-
-if parent then
-	parent.registerChildren(object)
-end
+object.draw = draw
+object.setText = setText
+object.getText = getText
+object.setVariable = setVariable
 
 return object
 -- Returning of element --
