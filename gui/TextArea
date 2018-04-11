@@ -175,26 +175,45 @@ local function processText()
     self.formattedText = formatColors(formatText(self.text, self.boundaries.x2-self.boundaries.x1-self.margin_left-self.margin_right+1), self.fg_color, self.bg_color)
 end
 
-local function draw( forceCalculation )
+local function draw()
 	if #self.boundaries == 0 or self.forcedCalculation then
-		self.boundaries = object.getBounds()
+		self.boundaries, self.overhangs = object.getBounds()
 	end
 
 	if #self.formattedText == 0 or self.forcedCalculation then
 		processText()
+		self.forcedCalculation = false
 	end
 
+	local lineLength = self.boundaries.x2-self.boundaries.x1-self.overhangs.left-self.overhangs.right+1
 
-	local lineLength = self.boundaries.x2-self.boundaries.x1+1
+	if lineLength < 1 then
+		return
+	end
 
-	for y = self.boundaries.y1, self.boundaries.y2 do
-		local textPos = y-self.boundaries.y1-self.margin_top+1
-		screen.setCursorPos(self.boundaries.x1, y)
-		screen.blit((" "):rep(lineLength), self.fg_color:rep(lineLength), self.bg_color:rep(lineLength))
-		screen.setCursorPos(self.boundaries.x1+self.margin_left, y)
+	-- Cut off the text if the TextArea has an overhang to the left or right
+	local textX1 = 1+self.overhangs.left
+	local textPos
 
-		if self.formattedText[textPos] and textPos <= self.boundaries.y2-self.boundaries.y1-self.margin_bottom+1 then
-			screen.blit(self.formattedText[textPos][1], self.formattedText[textPos][2], self.formattedText[textPos][3])
+	gpu.setBackground( tonumber( self.bg_color, 16 ), true )
+	gpu.fill(
+		self.boundaries.x1+self.overhangs.left,
+		self.boundaries.y1+self.overhangs.top,
+		self.boundaries.x2-self.boundaries.x1-self.overhangs.left-self.overhangs.right+1,
+		self.boundaries.y2-self.boundaries.y1-self.overhangs.top-self.overhangs.bottom+1,
+		" "
+ 	)
+
+	for y = self.boundaries.y1+self.overhangs.top+self.margin_top, self.boundaries.y2-self.overhangs.bottom-self.margin_bottom do
+		textPos = y-self.boundaries.y1-self.margin_top+1
+
+		screen.setCursorPos(self.boundaries.x1+self.overhangs.left+self.margin_left, y)
+
+		if self.formattedText[textPos] then
+			screen.blit( self.formattedText[textPos][1]:sub( textX1, lineLength+textX1-1 ),
+				self.formattedText[textPos][2]:sub( textX1, lineLength+textX1-1 ),
+				self.formattedText[textPos][3]:sub( textX1, lineLength+textX1-1 )
+			)
 		end
 	end
 
