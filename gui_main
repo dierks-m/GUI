@@ -215,13 +215,13 @@ end
 -- Functions --
 
 for i = 1, #standardPalette do
-    gpu.setPaletteColor( i-1, standardPalette[i] )
+	gpu.setPaletteColor( i-1, standardPalette[i] )
 end
 
 return {
-    lookupColor = lookupColor;
-    createGUIObject = createGUIObject;
-    checkCanvasForClick = checkCanvasForClick;
+	lookupColor = lookupColor;
+	createGUIObject = createGUIObject;
+	checkCanvasForClick = checkCanvasForClick;
 	setPalette = setPalette;
 	loadUIFile = loadUIFile;
 	setPath = setPath;
