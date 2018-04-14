@@ -18,6 +18,8 @@ self.height		= args.height
 self.children	= {}
 self.boundaries	= {}
 self.overhangs	= {}
+
+self.notifyParent = false
 -- Variables --
 
 
@@ -121,11 +123,11 @@ local function draw()
 	end
 end
 
-local function registerChildren( element )
+local function registerChildren( tElement )
 	--[[
 		Registers a child element so that its draw function can be triggered
 	]]--
-	self.children[#self.children+1] = element
+	self.children[ #self.children+1 ] = tElement
 end
 
 local function setBackgroundColor( colour )
@@ -156,10 +158,18 @@ local function setTextColor( colour )
     self.forcedCalculation = true
 end
 
-local function triggerCalculation()
+local function triggerCalculation( bNotifyChildren )
 	self.forcedCalculation = true
 
-    for k, v in pairs(self.children) do
+	if self.notifyParent then
+		parent.triggerCalculation( false )
+	end
+
+	if bNotifyChildren == false then
+		return
+	end
+
+    for k, v in pairs( self.children ) do
         v.triggerCalculation()
     end
 end
@@ -191,22 +201,22 @@ end
 -- Functions --
 
 -- Returning of element --
-setBackgroundColor(args.bg_color or "f")
-setTextColor(args.fg_color or "0")
+setBackgroundColor( args.bg_color or "f" )
+setTextColor( args.fg_color or "0" )
 
 self.boundaries, self.overhangs = getBounds()
 
 object = {
-	--getSize     = getSize;
-	getBounds     = getBounds;
-	draw        = draw;
-	GUIObjectType   = 0x01;
-	registerChildren  = registerChildren;
-	setBackgroundColor  = setBackgroundColor;
-	setTextColor    = setTextColor;
-	setBoundaries   = setBoundaries;
-	triggerCalculation  = triggerCalculation;
-	children      = self.children;
+	getBounds			=	getBounds;
+	draw				=	draw;
+	GUIObjectType		=	0x01;
+	registerChildren	=	registerChildren;
+	setBackgroundColor	=	setBackgroundColor;
+	setTextColor		=	setTextColor;
+	setBoundaries		=	setBoundaries;
+	triggerCalculation	=	triggerCalculation;
+	children			=	self.children;
+	notyifyParent		=	self.notifyParent;
 }
 
 if parent then
