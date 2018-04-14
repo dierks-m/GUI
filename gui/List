@@ -11,6 +11,8 @@ self.verticalScroll = 0
 self.totalScroll = -1
 --	Save element heights so they don't have to be calculated each time
 self.childHeights = {}
+
+self.scrollIndicators = {}
 -- Variables --
 
 
@@ -44,10 +46,18 @@ local function setPositions()
 	end
 end
 
+local function updateScrollIndicators( bRedraw )
+	for k, v in pairs( self.scrollIndicators ) do
+		v.setListLength( self.totalScroll )
+		v.setListPosition( self.verticalScroll, bRedraw )
+	end
+end
+
 local function draw()
 	if self.totalScroll == -1 or self.forcedCalculation then
 		calculateTotalScroll()
 		setPositions()
+		updateScrollIndicators()
 		self.forcedCalculation = false
 	end
 
@@ -99,10 +109,43 @@ local function setScroll( nPosition, bIncDec )
 
 	if self.verticalScroll ~= previousPosition then
 		setPositions()
+
+		for k, v in pairs( self.scrollIndicators ) do
+			v.setListPosition( self.verticalScroll )
+		end
+
 		return true
 	else
 		return false
 	end
+end
+
+local function linkScrollIndicator( tIndicator )
+	if not tIndicator.link then
+		return
+	end
+
+	self.scrollIndicators[ #self.scrollIndicators ] = tIndicator.link( self )
+
+	if self.totalScroll == -1 then
+		calculateTotalScroll()
+		setPositions()
+	end
+
+	self.scrollIndicators[ #self.scrollIndicators ].setListLength( self.totalScroll )
+	self.scrollIndicators[ #self.scrollIndicators ].setListPosition( self.verticalScroll, false )
+end
+
+local function registerChildren( tElement )
+	--[[
+		Override the CanvasObject.registerChildren function, so that now changing boundaries
+		will cause the list to recalculate
+	]]--
+	self.children[ #self.children+1 ] = tElement
+
+	calculateTotalScroll()
+
+	tElement.notifyParent = true
 end
 -- Functions --
 
@@ -110,6 +153,8 @@ end
 -- Returning of element --
 object.draw = draw
 object.setScroll = setScroll
+object.linkScrollIndicator = linkScrollIndicator
+object.updateScrollIndicators = updateScrollIndicators
 
 return object
 -- Returning of element --
