@@ -1,18 +1,20 @@
 -- Variables --
-local component = require("component")
+local component = require( "component" )
 
 local GUIElements = {
-	CanvasObject	=	{"lib_banned/lib_gui/CanvasObject", 0x01};
-	TextArea		=	{"lib_banned/lib_gui/TextArea", 0x02};
-	Button			=	{"lib_banned/lib_gui/Button", 0x04};
-	List			=	{"lib_banned/lib_gui/List", 0x08}
+	CanvasObject	=	{ "CanvasObject", 0x01 };
+	TextArea		=	{ "TextArea", 0x02 };
+	Button			=	{ "Button", 0x04 };
+	List			=	{ "List", 0x08 };
+	ScrollIndicator	=	{ "ScrollIndicator", 0x10 };
 }
 
 local dependencies = {
 	CanvasObject	=	{};
-	TextArea		=	{"CanvasObject"};
-	Button			=	{"CanvasObject", "TextArea"};
-	List			=	{"CanvasObject"};
+	TextArea		=	{ "CanvasObject" };
+	Button			=	{ "CanvasObject", "TextArea" };
+	List			=	{ "CanvasObject" };
+	ScrollIndicator	=	{ "CanvasObject" };
 }
 
 local lookup = {
@@ -122,7 +124,7 @@ local function loadElement( name, env )
     return file
 end
 
-function createGUIObject( args, objectType, parent, redirect )
+local function createGUIObject( args, objectType, parent, redirect )
 	local self, object = {}, parent
 
 	local environment = {
@@ -134,18 +136,20 @@ function createGUIObject( args, objectType, parent, redirect )
 		gpu				=	gpu;
 	}
 
-	setmetatable(environment, {__index=_G})
+	setmetatable( environment, { __index=_G } )
 
-	for k, v in pairs(dependencies[objectType]) do
-		object = loadElement(v, environment)(args, object)
+	for k, v in pairs( dependencies[objectType] ) do
+		object = loadElement( v, environment )( args, object )
 	end
 
-	object = loadElement(objectType, environment)(args, object)
+	object = loadElement( objectType, environment )( args, object )
+
+	object.GUIObjectType = GUIElements[ objectType ][2]
 
 	return object
 end
 
-function checkCanvasForClick( element, x, y )
+local function checkCanvasForClick( element, x, y )
 	local matches = {}
 
 	if element.GUIObjectType == GUIElements.Button[2] then
@@ -165,19 +169,47 @@ function checkCanvasForClick( element, x, y )
 	return matches
 end
 
-function lookupColor( color )
+local function lookupColor( color )
 	return lookup[ color ]
 end
 
-function setPalette( tPalette )
+local function setPalette( tPalette )
 	assert( type( tPalette ) == "table", "Palette must be given in table form" )
 
 	for k, v in pairs( tPalette ) do
 		if lookup[ k ] then
 			gpu.setPaletteColor( tonumber( lookup[ k ], 16 ), v )
-		elseif tonumber( v, 16 ) then
+		elseif tonumber( k, 16 ) then
 			gpu.setPaletteColor( tonumber( k, 16 ), v )
 		end
+	end
+end
+
+local function loadUIFile( sPath, tEnvironment )
+	local tEnvironment = type( tEnvironment ) == "table" and tEnvironment or {}
+
+	tEnvironment.gui = {
+		createGUIObject = createGUIObject;
+	}
+
+	local fileContent, err = loadfile( sPath, "bt", tEnvironment )
+
+	if not fileContent then
+		if err then
+			error( err )
+		else
+			error( "File not found: " .. sPath )
+		end
+	end
+
+	return fileContent()
+end
+
+local function setPath( sPath )
+	sPath = sPath:match( "[\\/]$" ) and sPath or sPath .. "/"
+
+	for k, v in pairs( GUIElements ) do
+		v[1] = sPath .. k
 	end
 end
 -- Functions --
@@ -191,4 +223,6 @@ return {
     createGUIObject = createGUIObject;
     checkCanvasForClick = checkCanvasForClick;
 	setPalette = setPalette;
+	loadUIFile = loadUIFile;
+	setPath = setPath;
 }
