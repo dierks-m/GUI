@@ -57,47 +57,52 @@ local standardPalette = {
     0xffffff;
 }
 
-_G.screen = {
+local screen = {
     xPos    =   0;
     yPos    =   0;
 }
+
 local gpu = component.gpu
 local term = require( "term" )
 -- Variables --
 
 
 -- Functions --
-_G.screen.setCursorPos = function( x, y )
+screen.setCursorPos = function( x, y )
     assert( type(x) == "number" and type(y) == "number", "Arguments must be numbers" )
-    _G.screen.xPos = x
-    _G.screen.yPos = y
+    screen.xPos = x
+    screen.yPos = y
 end
 
-_G.screen.blit = function( text, fg, bg )
+screen.blit = function( text, fg, bg )
+	local fg_match, bg_match, fg_color, bg_color, len
+
     while #text > 0 do
-        local fg_match, bg_match = fg:match( fg:sub( 1, 1 ) .. "+" ), bg:match( bg:sub( 1, 1 ) .. "+" )
-        local fg_color, bg_color = fg_match and fg_match:sub( 1, 1 ), bg_match and bg_match:sub( 1, 1 )
-        local len = math.min( fg_match and #fg_match or #text, bg_match and #bg_match or #text )
+        fg_match, bg_match = fg:match( fg:sub( 1, 1 ) .. "+" ), bg:match( bg:sub( 1, 1 ) .. "+" )
+        fg_color, bg_color = fg_match and fg_match:sub( 1, 1 ), bg_match and bg_match:sub( 1, 1 )
+        len = math.min( fg_match and #fg_match or #text, bg_match and #bg_match or #text )
 
         if fg_color then
             gpu.setForeground( tonumber( fg_color, 16 ), true )
+			fg_color = nil
         end
 
         if bg_color then
             gpu.setBackground( tonumber( bg_color, 16 ), true )
+			fg_color = nil
         end
 
-        gpu.set( _G.screen.xPos, _G.screen.yPos, text:sub( 1, len ) )
-        _G.screen.xPos = _G.screen.xPos + len
+        gpu.set( screen.xPos, screen.yPos, text:sub( 1, len ) )
+        screen.xPos = screen.xPos + len
         text, fg, bg = text:sub( len+1 ), fg:sub( len+1 ), bg:sub( len+1 )
     end
 end
 
-_G.screen.getSize = function()
+screen.getSize = function()
     return gpu.getResolution()
 end
 
-_G.screen.setCursorBlink = function( bool )
+screen.setCursorBlink = function( bool )
     term.setCursorBlink( bool )
 end
 
