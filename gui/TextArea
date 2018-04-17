@@ -82,12 +82,12 @@ local function formatText( text, xSize )
         for match in formatted[i]:gmatch("%s*%S*") do
             local withoutColor = match:gsub("[&$][%xOo];", "")
 
-            if #withoutColor > xSize-xPos+1 then
-                while #withoutColor > xSize do
-                    local rest = xSize-#newFormatted[ #newFormatted ]:gsub("[$&][%xRrLlMmo];", "")
+            if unicode.len( withoutColor ) > xSize-xPos+1 then
+                while unicode.len( withoutColor ) > xSize do
+                    local rest = xSize-unicode.len( newFormatted[ #newFormatted ]:gsub("[$&][%xRrLlMmo];", "") )
                     local currPos, actPos = 0, 0
 
-                    while currPos < #match do
+                    while currPos < unicode.len( match ) do
                         if not unicode.sub( match, currPos ):match( "^[$&][%xo];" ) then
                             if actPos >= rest-1 then
                                 break
@@ -99,12 +99,12 @@ local function formatText( text, xSize )
                         end
                     end
 
-                    newFormatted[#newFormatted] = newFormatted[ #newFormatted ] .. match:sub( 1, currPos ) .. ( xSize > 1 and "-" or "" )
+                    newFormatted[ #newFormatted ] = newFormatted[ #newFormatted ] .. unicode:sub( match, 1, currPos ) .. ( xSize > 1 and "-" or "" )
                     match = unicode.sub( match, currPos+( xSize > 1 and 1 or 0 ) )
-                    withoutColor = match:gsub("[$&][%xOo];", "")
+                    withoutColor = match:gsub( "[$&][%xOo];", "" )
 
-                    if #withoutColor > xSize then
-                        newFormatted[#newFormatted+1] = ""
+                    if unicode.len( withoutColor ) > xSize then
+                        newFormatted[ #newFormatted+1 ] = ""
                         newFormattingOptions[ #newFormattingOptions+1 ] = currentFormatting
                     end
                 end
@@ -112,10 +112,10 @@ local function formatText( text, xSize )
                 match = match:match( "%S+" )
                 newFormatted[ #newFormatted+1 ] = match
                 newFormattingOptions[ #newFormattingOptions+1 ] = currentFormatting
-                xPos = #match:gsub( "[$&][%xo];", "" ) + 1
+                xPos = unicode.len( match:gsub( "[$&][%xo];", "" ) ) + 1
             else
                 newFormatted[ #newFormatted ] = newFormatted[ #newFormatted ] .. match
-                xPos = xPos + #match:gsub( "[$&][%xo];", "" )
+                xPos = xPos + unicode.len( match:gsub( "[$&][%xo];", "" ) )
             end
         end
     end
