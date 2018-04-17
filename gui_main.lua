@@ -1,5 +1,6 @@
 -- Variables --
 local component = require( "component" )
+local unicode = require( "unicode" )
 
 local GUIElements = {
 	CanvasObject	=	{ "CanvasObject", 0x01 };
@@ -76,25 +77,28 @@ end
 
 screen.blit = function( text, fg, bg )
 	local fg_match, bg_match, fg_color, bg_color, len
+	local previous_fg, previous_bg
 
     while #text > 0 do
         fg_match, bg_match = fg:match( fg:sub( 1, 1 ) .. "+" ), bg:match( bg:sub( 1, 1 ) .. "+" )
-        fg_color, bg_color = fg_match and fg_match:sub( 1, 1 ), bg_match and bg_match:sub( 1, 1 )
-        len = math.min( fg_match and #fg_match or #text, bg_match and #bg_match or #text )
+        fg_color, bg_color = fg_match:match( "^%x" ), bg_match:match( "^%x" )
+        len = math.min( #fg_match, #bg_match )
 
-        if fg_color then
+        if fg_color ~= previous_fg then
             gpu.setForeground( tonumber( fg_color, 16 ), true )
+			previous_fg = fg_color
 			fg_color = nil
         end
 
-        if bg_color then
+        if bg_color ~= previous_bg then
             gpu.setBackground( tonumber( bg_color, 16 ), true )
+			previous_bg = bg_color
 			fg_color = nil
         end
 
-        gpu.set( screen.xPos, screen.yPos, text:sub( 1, len ) )
+        gpu.set( screen.xPos, screen.yPos, unicode.sub( text, 1, len ) )
         screen.xPos = screen.xPos + len
-        text, fg, bg = text:sub( len+1 ), fg:sub( len+1 ), bg:sub( len+1 )
+        text, fg, bg = unicode.sub( text, len+1 ), fg:sub( len+1 ), bg:sub( len+1 )
     end
 end
 
@@ -139,6 +143,7 @@ local function createGUIObject( args, objectType, parent, redirect )
 		self			=	self;
 		screen			=	redirect or screen;
 		gpu				=	gpu;
+		unicode			=	unicode;
 	}
 
 	setmetatable( environment, { __index=_G } )
