@@ -88,7 +88,7 @@ local function formatText( text, xSize )
                     local currPos, actPos = 0, 0
 
                     while currPos < #match do
-                        if not match:sub( currPos ):match( "^[$&][%xo];" ) then
+                        if not unicode.sub( match, currPos ):match( "^[$&][%xo];" ) then
                             if actPos >= rest-1 then
                                 break
                             end
@@ -100,7 +100,7 @@ local function formatText( text, xSize )
                     end
 
                     newFormatted[#newFormatted] = newFormatted[ #newFormatted ] .. match:sub( 1, currPos ) .. ( xSize > 1 and "-" or "" )
-                    match = match:sub( currPos+( xSize > 1 and 1 or 0 ) )
+                    match = unicode.sub( match, currPos+( xSize > 1 and 1 or 0 ) )
                     withoutColor = match:gsub("[$&][%xOo];", "")
 
                     if #withoutColor > xSize then
@@ -122,9 +122,9 @@ local function formatText( text, xSize )
 
     for k, v in pairs(newFormatted) do
         if newFormattingOptions[k] == 2 then
-            newFormatted[k] = (" "):rep(math.floor((xSize-#(v:gsub( "[&$][%xOo];", "" )))/2)) .. v
+            newFormatted[k] = (" "):rep( math.floor( ( xSize-unicode.len( v:gsub( "[&$][%xOo];", "" ) ) )/2 ) ) .. v
         elseif newFormattingOptions[k] == 3 then
-            newFormatted[k] = (" "):rep(xSize-#v) .. v
+            newFormatted[k] = (" "):rep( xSize-unicode.len( v ) ) .. v
         end
     end
 
@@ -218,9 +218,9 @@ local function draw()
 
 		if self.formattedText[ textPos ] then
 			screen.blit(
-				self.formattedText[textPos][1]:sub( textX1, lineLength+textX1-1 ),
-				self.formattedText[textPos][2]:sub( textX1, lineLength+textX1-1 ),
-				self.formattedText[textPos][3]:sub( textX1, lineLength+textX1-1 )
+				unicode.sub( self.formattedText[textPos][1], textX1, lineLength+textX1-1 ),
+				unicode.sub( self.formattedText[textPos][2], textX1, lineLength+textX1-1 ),
+				unicode.sub( self.formattedText[textPos][3], textX1, lineLength+textX1-1 )
 			)
 		end
 	end
