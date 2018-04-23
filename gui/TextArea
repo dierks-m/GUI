@@ -160,10 +160,10 @@ local function formatColors( text, original_fg, original_bg )
                 match = match or v
 
                 formatted[#formatted][1] = formatted[#formatted][1] .. match
-                formatted[#formatted][2] = formatted[#formatted][2] .. current_fg:rep(#match)
-                formatted[#formatted][3] = formatted[#formatted][3] .. current_bg:rep(#match)
+                formatted[#formatted][2] = formatted[#formatted][2] .. current_fg:rep( unicode.len( match ) )
+                formatted[#formatted][3] = formatted[#formatted][3] .. current_bg:rep( unicode.len( match ) )
 
-                v = v:sub(#match+1)
+				v = unicode.sub( v, unicode.len( match )+1 )
             end
         end
     end
