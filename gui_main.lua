@@ -1,16 +1,20 @@
 -- Variables --
 local GUIElements = {
-	CanvasObject	=	{".rules/gui/CanvasObject", 0x01};
-	TextArea		=	{".rules/gui/TextArea", 0x02};
-	Button			=	{".rules/gui/Button", 0x04};
-	Input			=	{".rules/gui/Input", 0x08}
+	CanvasObject	=	{"CanvasObject.lua", 0x01},
+	TextArea		=	{"TextArea.lua", 0x02},
+	Button			=	{"Button.lua", 0x04},
+	Input			=	{"Input.lua", 0x08},
+    List			=	{"List.lua", 0x08},
+	ScrollIndicator	=	{"ScrollIndicator.lua", 0x10},
 }
 
 local dependencies = {
 	CanvasObject	=	{};
-	TextArea		=	{"CanvasObject"};
-	Button			=	{"CanvasObject", "TextArea"};
-	Input			=	{"CanvasObject"}
+	TextArea		=	{"CanvasObject"},
+	Button			=	{"CanvasObject", "TextArea"},
+	Input			=	{"CanvasObject"},
+    List			=	{"CanvasObject"},
+	ScrollIndicator	=	{"CanvasObject"},
 }
 
 local lookup = {
@@ -65,7 +69,7 @@ local function bAssert ( state, msg, errLevel )
 	end
 end
 
-local function loadElement( name, env )
+local function loadElement(name, env)
 	return loadfile(GUIElements[name][1], env)
 end
 
@@ -122,12 +126,12 @@ function setPalette( tPalette, wrap )
 
 	local colourIndex
 
-	for k, v in pairs( tPalette ) do
+	for k, v in pairs(tPalette) do
 		if lookup[ k ] then
-			colourIndex = reverseLookup[ lookup[ k ] ]
+			colourIndex = reverseLookup[lookup[k]]
 		end
 
-		colourIndex = colourIndex or reverseLookup[ k ]
+		colourIndex = colourIndex or reverseLookup[k]
 
 		if colourIndex then
 			term.setPaletteColor( colourIndex,
@@ -141,6 +145,34 @@ function setPalette( tPalette, wrap )
 	end
 
 	return true
+end
+
+function loadUIFile( sPath, tEnvironment )
+	local tEnvironment = type( tEnvironment ) == "table" and tEnvironment or {}
+
+	tEnvironment.gui = {
+		createGUIObject = createGUIObject;
+	}
+
+	local fileContent, err = loadfile( sPath, "bt", tEnvironment )
+
+	if not fileContent then
+		if err then
+			error( err )
+		else
+			error( "File not found: " .. sPath )
+		end
+	end
+
+	return fileContent()
+end
+
+function setPath(sPath)
+	sPath = sPath:match("[\\/]$") and sPath or sPath .. "/"
+
+	for k, v in pairs(GUIElements) do
+		v[1] = sPath .. v[1]:match("[\\/]?(.+)$")
+	end
 end
 -- Functions --
 
