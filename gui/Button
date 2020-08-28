@@ -13,8 +13,8 @@ local function isClicked( x, y )
 		self.boundaries = object.getBounds()
 	end
 
-	if x >= self.boundaries.x1 and x <= self.boundaries.x2
-		and y >= self.boundaries.y1 and y <= self.boundaries.y2 then
+	if x >= self.boundaries.x1+self.overhangs.left and x <= self.boundaries.x2-self.overhangs.right
+		and y >= self.boundaries.y1+self.overhangs.top and y <= self.boundaries.y2-self.overhangs.bottom then
 
 		return true
 	end
