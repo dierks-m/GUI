@@ -41,71 +41,87 @@ local function getSize( str, n, m )
 		end
 	end
 
-	return size > 0 and math.floor( size+0.5 ) or 0
+	return math.floor( size+0.5 )
 end
 
 local function getBounds()
-	--[[
-		Get the exact boundaries for the current GUI object. If necessary the positions
-		are calculated relative to the parent object
-	]]--
-	local coords, sizing, xSize, ySize = {}
+    --[[
+	    Get the exact boundaries for the current GUI object. If necessary the positions
+	    are calculated relative to the parent object
+    ]]--
+    local coords, sizing, xSize, ySize, overhangs = {}
 
-	if parent then
-		sizing = parent.getBounds()
-	else
-		xSize, ySize = term.getSize()
-
-		sizing = {
-			x1	=	1;
-			x2	=	xSize;
-			y1	=	1;
-			y2	=	ySize;
+    if parent then
+        sizing, overhangs = parent.getBounds()
+    else
+        xSize, ySize = term.getSize()
+        sizing = {
+	        x1  = 1;
+	        x2  = xSize;
+	        y1  = 1;
+	        y2  = ySize;
+        }
+		overhangs = {
+			left	=	0;
+			right	=	0;
+			top		=	0;
+			bottom	=	0;
 		}
-	end
+    end
 
-	-- x-Size --
+    -- x-Size --
 
-	coords.x1	=	self.left and sizing.x1+getSize( self.left, sizing.x1, sizing.x2 )
-	coords.x2	=	self.right and sizing.x2-getSize( self.right, sizing.x1, sizing.x2 )
+    coords.x1 = self.left and sizing.x1+getSize( self.left, sizing.x1, sizing.x2 )
+	coords.x2 = self.right and sizing.x2-getSize( self.right, sizing.x1, sizing.x2 )
 
-	if not ( coords.x1 and coords.x2 ) and self.width then
-		coords.x1	=	not coords.x1 and coords.x2-getSize( self.width, sizing.x1, sizing.x2 )+1 or coords.x1
-		coords.x2	=	not coords.x2 and coords.x1+getSize( self.width, sizing.x1, sizing.x2 )-1 or coords.x2
-	end
+    if not ( coords.x1 and coords.x2 ) and self.width then
+	    coords.x1 = not coords.x1 and coords.x2-( getSize( self.width, sizing.x1, sizing.x2 )-1 ) or coords.x1
+	    coords.x2 = not coords.x2 and coords.x1+( getSize( self.width, sizing.x1, sizing.x2 )-1 ) or coords.x2
+    end
 
-	-- y-Size --
+    -- y-Size --
 
-	coords.y1	=	self.top and sizing.y1+getSize( self.top, sizing.y1, sizing.y2 )
-	coords.y2	=	self.bottom and sizing.y2-getSize( self.bottom, sizing.y1, sizing.y2 )
+    coords.y1 = self.top and sizing.y1+getSize( self.top, sizing.y1, sizing.y2 )
+    coords.y2 = self.bottom and sizing.y2-getSize( self.bottom, sizing.y1, sizing.y2 )
 
-	if not ( coords.y1 and coords.y2 ) and self.height then
-		coords.y1	=	not coords.y1 and coords.y2-getSize( self.height, sizing.y1, sizing.y2 )+1 or coords.y1
-		coords.y2	=	not coords.y2 and coords.y1+getSize( self.height, sizing.y1, sizing.y2 )-1 or coords.y2
-	end
+    if not ( coords.y1 and coords.y2 ) and self.height then
+	    coords.y1 = not coords.y1 and coords.y2-( getSize( self.height, sizing.y1, sizing.y2 )-1 ) or coords.y1
+	    coords.y2 = not coords.y2 and coords.y1+( getSize( self.height, sizing.y1, sizing.y2 )-1 ) or coords.y2
+    end
 
-	coords.x1 = coords.x1 >= sizing.x1 and coords.x1 or sizing.x1
-	coords.x2 = coords.x2 <= sizing.x2 and coords.x2 or sizing.x2
-	coords.y1 = coords.y1 >= sizing.y1 and coords.y1 or sizing.y1
-	coords.y2 = coords.y2 <= sizing.y2 and coords.y2 or sizing.y2
+	overhangs.left		=	coords.x1 < sizing.x1+overhangs.left and sizing.x1-coords.x1+overhangs.left or 0
+	overhangs.right		=	coords.x2 > sizing.x2-overhangs.right and coords.x2-sizing.x2+overhangs.right or 0
+	overhangs.top		=	coords.y1 < sizing.y1+overhangs.top and sizing.y1-coords.y1+overhangs.top or 0
+	overhangs.bottom	=	coords.y2 > sizing.y2-overhangs.bottom and coords.y2-sizing.y2+overhangs.bottom or 0
 
-	return coords
+    return coords, overhangs
+end
+
+function fill( startX, startY, endX, endY, bgCol )
+    local len = endX - startX + 1
+
+    for y = startY, endY do
+        term.setCursorPos(startX, y)
+        term.blit((" "):rep(len), ("f"):rep(len), bgCol:rep(len))
+    end
 end
 
 local function draw()
 	--[[
 		Draws the object and all of its children
 	]]--
-	if #self.boundaries == 0 or self.forcedCalculation then
-		self.boundaries = getBounds()
+    if #self.boundaries == 0 or self.forcedCalculation then
+		self.boundaries, self.overhangs = getBounds()
+		self.forcedCalculation = false
 	end
 
-	local lineLength = self.boundaries.x2-self.boundaries.x1+1
-
-	for y = self.boundaries.y1, self.boundaries.y2 do
-		term.setCursorPos(self.boundaries.x1, y)
-		term.blit((" "):rep(lineLength), ("f"):rep(lineLength), self.bg_color:rep(lineLength))
-	end
+	fill(
+        self.boundaries.x1 + self.overhangs.left,
+        self.boundaries.y1 + self.overhangs.top,
+        self.boundaries.x2 - self.overhangs.right,
+        self.boundaries.y2 - self.overhangs.bottom,
+        self.bg_color
+    )
 
 	for k, v in pairs(self.children) do
 		v.draw()
@@ -119,53 +135,54 @@ local function registerChildren( element )
 	self.children[#self.children+1] = element
 end
 
-local function setBackgroundColor( color )
-	--[[
-		Sets the background color for the current object.
-		Color names, hex numbers and powers of two are allowed
+local function setBackgroundColor( colour )
+  --[[
+    Sets the background color for the current object.
+    Color names, hex numbers and powers of two are allowed
 
-		Example:
-		"red", "lightBlue", "a", "f", 32768, 16384
-	]]--
-	if type(color) == "number" then
-		for k, v in pairs(reverseLookup) do
-			if color == v then
-				self.forcedCalculation = true
-				self.bg_color = k
-				break
-			end
-		end
-	else
-		self.forcedCalculation = true
-		self.bg_color = lookup[color] or ( reverseLookup[color] and color ) or self.bg_color
-	end
+    Example:
+    "red", "lightBlue", "a", "f", 32768, 16384
+  ]]--
+
+    if lookup[ colour ] then
+    	self.bg_color = lookup[ colour ]
+    else
+        self.bg_color = colour:match( "%x" ) and colour or self.bg_color
+    end
+
+    self.forcedCalculation = true
 end
 
-local function setTextColor( color )
-    if type(color) == "number" then
-		for k, v in pairs(reverseLookup) do
-			if color == v then
-				self.forcedCalculation = true
-				self.fg_color = k
-				break
-			end
-		end
-	else
-		self.forcedCalculation = true
-		self.fg_color = lookup[color] or ( reverseLookup[color] and color ) or self.bg_color
-	end
+local function setTextColor( colour )
+    if lookup[ colour ] then
+        self.fg_color = lookup[ colour ]
+    else
+        self.fg_color = colour:match( "%x" ) and colour or self.fg_color
+    end
+
+    self.forcedCalculation = true
 end
 
-local function triggerCalculation()
+local function triggerCalculation( bNotifyChildren )
 	self.forcedCalculation = true
 
-	for k, v in pairs(self.children) do
-		v.triggerCalculation()
+	if self.notifyParent then
+		parent.triggerCalculation( false )
 	end
+
+	if bNotifyChildren == false then
+		return
+	end
+
+    for k, v in pairs( self.children ) do
+        v.triggerCalculation()
+    end
 end
 
 local function setBoundaries( args )
 	bAssert(type(args) == "table", "Boundaries must be given in table", 1)
+
+	local oldWidth, oldHeight = self.boundaries.x2-self.boundaries.x1+1, self.boundaries.y2-self.boundaries.y1+1
 
 	self.left = args.left or self.left
 	self.right = args.right or self.right
@@ -174,25 +191,37 @@ local function setBoundaries( args )
 	self.width = args.width or self.width
 	self.height = args.height or self.height
 
-	triggerCalculation()
+	self.boundaries, self.overhangs = getBounds()
+
+	--[[
+		Prevent complete recalculation for more advanced objects like TextArea
+		As this would process text and take more time
+	]]--
+	if self.boundaries.x2-self.boundaries.x1+1 ~= oldWidth or
+		self.boundaries.y2-self.boundaries.y1+1 ~= oldHeight then
+
+		triggerCalculation()
+	end
 end
 -- Functions --
 
 -- Returning of element --
-setBackgroundColor(args.bg_color or "f")
-setTextColor(args.fg_color or "0")
+setBackgroundColor( args.bg_color or "f" )
+setTextColor( args.fg_color or "0" )
+
+self.boundaries, self.overhangs = getBounds()
 
 object = {
-	--getSize			=	getSize;
-	getBounds			=	getBounds;
-	draw				=	draw;
-	GUIObjectType		=	0x01;
-	registerChildren	=	registerChildren;
-	setBackgroundColor	=	setBackgroundColor;
-	setTextColor		=	setTextColor;
-	setBoundaries		=	setBoundaries;
-	triggerCalculation	=	triggerCalculation;
-	children			=	self.children;
+	getBounds			= getBounds,
+	draw				= draw,
+	GUIObjectType		= 0x01,
+	registerChildren	= registerChildren,
+	setBackgroundColor	= setBackgroundColor,
+	setTextColor		= setTextColor,
+	setBoundaries		= setBoundaries,
+	triggerCalculation	= triggerCalculation,
+	children			= self.children,
+	notifyParent		= self.notifyParent
 }
 
 if parent then
