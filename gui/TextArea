@@ -31,13 +31,13 @@ self.margin_bottom = type(args.margin_bottom) == "number" and args.margin_bottom
 
 -- Functions --
 local function insertVariables ( text, variables )
-	return text:gsub( "$$(.-);", function ( varName )
-		return #varName == 0 and "$$;" or variables[ varName ] or "(var:" .. varName .. ")"
+	return text:gsub( "%%%%(.-);", function ( varName )
+		return variables[ varName ] or "(var:" .. varName .. ")"
 	end )
 end
 
 local function formatText( text, xSize )
-    if xSize < 2 then
+    if xSize < 1 then
         return {""}
     end
 
@@ -82,13 +82,13 @@ local function formatText( text, xSize )
         for match in formatted[i]:gmatch("%s*%S*") do
             local withoutColor = match:gsub("[&$][%xOo];", "")
 
-            if #withoutColor > xSize-xPos+1 then
-                while #withoutColor > xSize do
-                    local rest = xSize-#newFormatted[ #newFormatted ]:gsub("[$&][%xRrLlMmo];", "")
+            if withoutColor:len() > xSize-xPos+1 then
+                while withoutColor:len() > xSize do
+                    local rest = xSize - newFormatted[#newFormatted]:gsub("[$&][%xRrLlMmo];", ""):len()
                     local currPos, actPos = 0, 0
 
-                    while currPos < #match do
-                        if not match:sub( currPos ):match( "^[$&][%xo];" ) then
+                    while currPos < match:len() do
+                        if not string.sub( match, currPos ):match( "^[$&][%xo];" ) then
                             if actPos >= rest-1 then
                                 break
                             end
@@ -99,32 +99,32 @@ local function formatText( text, xSize )
                         end
                     end
 
-                    newFormatted[#newFormatted] = newFormatted[#newFormatted] .. match:sub(1, currPos) .. "-"
-                    match = match:sub(currPos+1)
-                    withoutColor = match:gsub("[$&][%xOo];", "")
+                    newFormatted[ #newFormatted ] = newFormatted[ #newFormatted ] .. unicode:sub( match, 1, currPos ) .. ( xSize > 1 and "-" or "" )
+                    match = string.sub( match, currPos+( xSize > 1 and 1 or 0 ) )
+                    withoutColor = match:gsub( "[$&][%xOo];", "" )
 
-                    if #withoutColor > xSize then
+                    if withoutColor:len() > xSize then
                         newFormatted[#newFormatted+1] = ""
-                        newFormattingOptions[ #newFormattingOptions+1 ] = currentFormatting
+                        newFormattingOptions[#newFormattingOptions+1] = currentFormatting
                     end
                 end
 
                 match = match:match( "%S+" )
                 newFormatted[ #newFormatted+1 ] = match
                 newFormattingOptions[ #newFormattingOptions+1 ] = currentFormatting
-                xPos = #match:gsub( "[$&][%xo];", "" ) + 1
+                xPos = match:gsub( "[$&][%xo];", "" ):len() + 1
             else
                 newFormatted[ #newFormatted ] = newFormatted[ #newFormatted ] .. match
-                xPos = xPos + #match:gsub( "[$&][%xo];", "" )
+                xPos = xPos + match:gsub("[$&][%xo];", ""):len()
             end
         end
     end
 
     for k, v in pairs(newFormatted) do
         if newFormattingOptions[k] == 2 then
-            newFormatted[k] = (" "):rep(math.floor((xSize-#(v:gsub( "[&$][%xOo];", "" )))/2)) .. v
+            newFormatted[k] = (" "):rep( math.floor( ( xSize - v:gsub( "[&$][%xOo];", "" ):len() )/2 ) ) .. v
         elseif newFormattingOptions[k] == 3 then
-            newFormatted[k] = (" "):rep(xSize-#v) .. v
+            newFormatted[k] = (" "):rep(xSize - v:len()) .. v
         end
     end
 
@@ -160,10 +160,10 @@ local function formatColors( text, original_fg, original_bg )
                 match = match or v
 
                 formatted[#formatted][1] = formatted[#formatted][1] .. match
-                formatted[#formatted][2] = formatted[#formatted][2] .. current_fg:rep(#match)
-                formatted[#formatted][3] = formatted[#formatted][3] .. current_bg:rep(#match)
+                formatted[#formatted][2] = formatted[#formatted][2] .. current_fg:rep( match:len() )
+                formatted[#formatted][3] = formatted[#formatted][3] .. current_bg:rep( match:len() )
 
-                v = v:sub(#match+1)
+				v = string.sub(v, match:len() + 1)
             end
         end
     end
@@ -175,29 +175,52 @@ local function processText()
     self.formattedText = formatColors(formatText(self.text, self.boundaries.x2-self.boundaries.x1-self.margin_left-self.margin_right+1), self.fg_color, self.bg_color)
 end
 
-local function draw( forceCalculation )
+local function draw()
 	if #self.boundaries == 0 or self.forcedCalculation then
-		self.boundaries = object.getBounds()
+		self.boundaries, self.overhangs = object.getBounds()
 	end
 
 	if #self.formattedText == 0 or self.forcedCalculation then
 		processText()
+		self.forcedCalculation = false
 	end
 
+	local lineLength = self.boundaries.x2-self.boundaries.x1-self.overhangs.left-self.overhangs.right+1
 
-	local lineLength = self.boundaries.x2-self.boundaries.x1+1
+	if lineLength < 1 then
+		return
+	end
 
-	term.setTextColor(reverseLookup[self.fg_color])
-	term.setBackgroundColor(reverseLookup[self.bg_color])
+	-- Cut off the text if the TextArea has an overhang to the left or right
+	local textX1 = 1+self.overhangs.left
 
-	for y = self.boundaries.y1, self.boundaries.y2 do
-		local textPos = y-self.boundaries.y1-self.margin_top+1
-		term.setCursorPos(self.boundaries.x1, y)
-		term.blit((" "):rep(lineLength), self.fg_color:rep(lineLength), self.bg_color:rep(lineLength))
-		term.setCursorPos(self.boundaries.x1+self.margin_left, y)
+	--[[
+		The starting position for text drawing has to remove overhanging margins to correctly
+		calculate the positions
+	]]--
+	local marginTop = self.overhangs.top < self.margin_top and self.margin_top-self.overhangs.top or self.overhangs.top
+	local marginBottom = self.overhangs.bottom < self.margin_bottom and self.margin_bottom-self.overhangs.bottom or self.overhangs.bottom
+	local textPos
 
-		if self.formattedText[textPos] and textPos <= self.boundaries.y2-self.boundaries.y1-self.margin_bottom+1 then
-			term.blit(self.formattedText[textPos][1], self.formattedText[textPos][2], self.formattedText[textPos][3])
+    fill(
+        self.boundaries.x1 + self.overhangs.left,
+        self.boundaries.y1 + self.overhangs.top,
+        self.boundaries.x2 - self.overhangs.right,
+        self.boundaries.y2 - self.overhangs.bottom,
+        self.bg_color
+    )
+
+    for y = self.boundaries.y1+marginTop, self.boundaries.y2-marginBottom do
+		textPos = y-self.boundaries.y1-self.margin_top+1
+
+		term.setCursorPos( self.boundaries.x1+self.overhangs.left+self.margin_left, y )
+
+		if self.formattedText[ textPos ] then
+			term.blit(
+				string.sub( self.formattedText[textPos][1], textX1, lineLength+textX1-1 ),
+				string.sub( self.formattedText[textPos][2], textX1, lineLength+textX1-1 ),
+				string.sub( self.formattedText[textPos][3], textX1, lineLength+textX1-1 )
+			)
 		end
 	end
 
